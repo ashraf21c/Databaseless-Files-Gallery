@@ -1,0 +1,6 @@
+{
+  "name": "FolioVault - Databaseless Central PDF Gallery & Curatorial Archive",
+  "description": "A databaseless, multilingual (Arabic, Japanese, English) PDF central web gallery with encrypted admin controls, tag/folder filters, EXIF metadata governance, drag-and-drop folder upload, and inline PDF viewing.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
