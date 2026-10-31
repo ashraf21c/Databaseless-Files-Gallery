@@ -148,6 +148,68 @@ export interface TranslationDictionary {
   wordDocumentViewer: string;
   imageViewer: string;
   words: string;
+  rssWidgetTitle: string;
+  rssWidgetSubtitle: string;
+  rssFeedName: string;
+  downloadRssFeed: string;
+  viewRssFeed: string;
+  copyRssXml: string;
+  rssCopied: string;
+  enableRssWidget: string;
+  disableRssWidget: string;
+  rssWidgetToggleAdmin: string;
+  rssWidgetEnabledNotice: string;
+  rssWidgetDisabledNotice: string;
+  recentlyAddedBadge: string;
+  latestAdditions: string;
+  downloadWord: string;
+  downloadImage: string;
+  downloadPresentation: string;
+  tableActions: string;
+  visible: string;
+  hidden: string;
+  downloadOn: string;
+  downloadOff: string;
+  changePpt: string;
+  addPptDeck: string;
+  noDescription: string;
+  mediaOrderingTitle: string;
+  autoAttachPptxNotice: string;
+  batchDropHint: string;
+  supportedFormatsHint: string;
+  authVerifying: string;
+  defaultPasswordDemo: string;
+  importYamlSuccess: string;
+  copyScript: string;
+  scriptCopied: string;
+  generateSingleHtml: string;
+  importYamlButton: string;
+  exportYamlButton: string;
+  gridMode: string;
+  listMode: string;
+  resetFilterTag: string;
+  passwordMinLength: string;
+  activeHashLabel: string;
+  supportedPhpVersions: string;
+  heroDescription: string;
+  heroVolBadge: string;
+  heroFigCaption: string;
+  coreDatabaselessTitle: string;
+  coreDatabaselessSubtitle: string;
+  coreCryptoTitle: string;
+  coreCryptoSubtitle: string;
+  coreExifTitle: string;
+  coreExifSubtitle: string;
+  coreLangTitle: string;
+  coreLangSubtitle: string;
+  skipToContent: string;
+  mainNavigation: string;
+  themeToggleLight: string;
+  themeToggleDark: string;
+  selectLanguage: string;
+  resultsCountLive: string;
+  closeDialog: string;
+  catalogTableCaption: string;
 }
 
 export const translations: Record<Language, TranslationDictionary> = {
@@ -294,6 +356,68 @@ export const translations: Record<Language, TranslationDictionary> = {
     wordDocumentViewer: 'Word Document Viewer',
     imageViewer: 'High-Resolution Image Inspector',
     words: 'words',
+    rssWidgetTitle: 'Recently Added',
+    rssWidgetSubtitle: 'Latest 10 additions with Media RSS XML feed',
+    rssFeedName: 'recently_added.rss',
+    downloadRssFeed: 'Download recently_added.rss',
+    viewRssFeed: 'View RSS Feed XML',
+    copyRssXml: 'Copy Feed XML',
+    rssCopied: 'Feed XML copied to clipboard!',
+    enableRssWidget: 'Enable Recently Added Widget',
+    disableRssWidget: 'Disable Widget',
+    rssWidgetToggleAdmin: 'Display Recently Added Media RSS Widget in Frontend',
+    rssWidgetEnabledNotice: 'Media RSS widget is active and tracking the 10 latest additions.',
+    rssWidgetDisabledNotice: 'Recently Added widget is currently hidden.',
+    recentlyAddedBadge: 'Recently Added',
+    latestAdditions: 'Latest 10 Additions',
+    downloadWord: 'Download Word Document',
+    downloadImage: 'Download Image',
+    downloadPresentation: 'Download Slide Deck',
+    tableActions: 'Actions',
+    visible: 'Visible',
+    hidden: 'Hidden',
+    downloadOn: 'Download ON',
+    downloadOff: 'Download OFF',
+    changePpt: 'Change PPT',
+    addPptDeck: '+ PPT Deck',
+    noDescription: 'No description provided',
+    mediaOrderingTitle: 'Media Ordering & Dual Download Setup',
+    autoAttachPptxNotice: 'Auto-provision PowerPoint slide deck download for video uploads',
+    batchDropHint: 'Drop multiple files or entire folder trees at once. Auto-tags items and creates collection albums.',
+    supportedFormatsHint: 'Supported: PDF, DOCX, DOC, ODT, MP4, WEBM, MOV, PPTX, PPT, ODP, JPG, PNG, WEBP, GIF.',
+    authVerifying: 'Verifying Hash...',
+    defaultPasswordDemo: 'Default password for demonstration: admin123',
+    importYamlSuccess: 'YAML Configuration successfully imported!',
+    copyScript: 'Copy Script',
+    scriptCopied: 'Script Copied!',
+    generateSingleHtml: 'Generate Single HTML',
+    importYamlButton: 'Import YAML',
+    exportYamlButton: 'Export YAML',
+    gridMode: 'Grid View',
+    listMode: 'List View',
+    resetFilterTag: 'Reset',
+    passwordMinLength: 'Password must be at least 4 characters long.',
+    activeHashLabel: 'Active SHA-256 Encrypted Hash:',
+    supportedPhpVersions: 'Supported Versions: PHP 8.1, PHP 8.2, and PHP 8.3+ (Multi-format directory scanner)',
+    heroDescription: 'Curated central gallery for PDF documents, folios, architectural monographs, and exhibition catalogs. Built entirely without databases: utilizing portable flat schemas, cryptographic SHA-256 admin governance, and full EXIF metadata retention.',
+    heroVolBadge: 'CENTRAL ARCHIVE · DATABASELESS SPECIFICATION',
+    heroFigCaption: 'Fig. 1 — Archival examination folio with preserved vector plates and metadata records.',
+    coreDatabaselessTitle: 'Databaseless Core',
+    coreDatabaselessSubtitle: 'YAML / Flat-file storage',
+    coreCryptoTitle: 'Encrypted Pass',
+    coreCryptoSubtitle: 'Salted SHA-256 Web Crypto',
+    coreExifTitle: 'EXIF Governance',
+    coreExifSubtitle: 'Selective front-end reveals',
+    coreLangTitle: 'RTL & Multilingual',
+    coreLangSubtitle: 'Arabic, Japanese, English',
+    skipToContent: 'Skip to main content',
+    mainNavigation: 'Main navigation',
+    themeToggleLight: 'Switch to light theme',
+    themeToggleDark: 'Switch to dark theme',
+    selectLanguage: 'Select language',
+    resultsCountLive: 'Showing {count} items',
+    closeDialog: 'Close dialog',
+    catalogTableCaption: 'Media archive document and asset catalog',
   },
   ar: {
     brandTitle: 'فوليو فولت',
@@ -438,6 +562,68 @@ export const translations: Record<Language, TranslationDictionary> = {
     wordDocumentViewer: 'عارض مستندات Word',
     imageViewer: 'مستعرض الصور عالي الدقة',
     words: 'كلمة',
+    rssWidgetTitle: 'أحدث الإضافات',
+    rssWidgetSubtitle: 'أحدث 10 إضافات للمستودع مع خلاصة Media RSS XML',
+    rssFeedName: 'recently_added.rss',
+    downloadRssFeed: 'تحميل recently_added.rss',
+    viewRssFeed: 'عرض كود خلاصة RSS XML',
+    copyRssXml: 'نسخ كود الخلاصة',
+    rssCopied: 'تم نسخ كود خلاصة RSS إلى الحافظة!',
+    enableRssWidget: 'تفعيل أداة أحدث الإضافات',
+    disableRssWidget: 'تعطيل الأداة',
+    rssWidgetToggleAdmin: 'عرض أداة أحدث الإضافات (Media RSS) في واجهة الزوار',
+    rssWidgetEnabledNotice: 'أداة خلاصة RSS مفعلة وتعرض أحدث 10 ملفات مضافة.',
+    rssWidgetDisabledNotice: 'أداة أحدث الإضافات مخفية حالياً.',
+    recentlyAddedBadge: 'مضاف حديثاً',
+    latestAdditions: 'أحدث 10 إضافات',
+    downloadWord: 'تنزيل مستند Word',
+    downloadImage: 'تنزيل الصورة',
+    downloadPresentation: 'تنزيل عرض الشرائح',
+    tableActions: 'الإجراءات',
+    visible: 'ظاهر',
+    hidden: 'مخفي',
+    downloadOn: 'التنزيل مفعّل',
+    downloadOff: 'التنزيل معطّل',
+    changePpt: 'تغيير العرض',
+    addPptDeck: '+ عرض بوربوينت',
+    noDescription: 'لا يوجد وصف مدخل',
+    mediaOrderingTitle: 'ترتيب الوسائط وإعداد التنزيل المزدوج',
+    autoAttachPptxNotice: 'تجهيز ملف عرض بوربوينت تلقائياً مع الفيديوهات المرفوعة',
+    batchDropHint: 'أفلت عدة ملفات أو مجلدات متكاملة دفعة واحدة. سيتم وسمها وإنشاء الألبومات تلقائياً.',
+    supportedFormatsHint: 'التنسيقات المدعومة: PDF, DOCX, DOC, ODT, MP4, WEBM, MOV, PPTX, PPT, ODP, JPG, PNG, WEBP, GIF.',
+    authVerifying: 'جاري التحقق من التجزئة...',
+    defaultPasswordDemo: 'كلمة المرور الافتراضية للتجربة: admin123',
+    importYamlSuccess: 'تم استيراد إعدادات YAML بنجاح!',
+    copyScript: 'نسخ الكود',
+    scriptCopied: 'تم نسخ الكود!',
+    generateSingleHtml: 'توليد ملف HTML المستقل',
+    importYamlButton: 'استيراد YAML',
+    exportYamlButton: 'تصدير YAML',
+    gridMode: 'عرض شبكي',
+    listMode: 'عرض القائمة',
+    resetFilterTag: 'إلغاء التصفية',
+    passwordMinLength: 'يجب ألا تقل كلمة المرور عن 4 أحرف.',
+    activeHashLabel: 'رمز تجزئة SHA-256 النشط:',
+    supportedPhpVersions: 'الإصدارات المدعومة: PHP 8.1 و 8.2 و 8.3+ (ماسح المجلدات متعدد التنسيقات)',
+    heroDescription: 'معرض وأرشيف مركزي لوثائق PDF والمجلدات والمونوغرافات المعمارية والمعارض الفنية. مبني بالكامل بدون قواعد بيانات: يعتمد على ملفات مسطحة محمولة، وتشفير SHA-256 لإدارة النظام، مع الاحتفاظ الكامل ببيانات EXIF.',
+    heroVolBadge: 'الأرشيف المركزي · مواصفات خالية من قواعد البيانات',
+    heroFigCaption: 'شكل 1 — لوحة فحص أرشيفية تحتفظ بالرسومات المتجهة والسجلات الوصفية الكاملة.',
+    coreDatabaselessTitle: 'بدون قاعدة بيانات',
+    coreDatabaselessSubtitle: 'تخزين مسطح عبر YAML',
+    coreCryptoTitle: 'تشفير فائق',
+    coreCryptoSubtitle: 'تجزئة SHA-256 مع ملح مشفر',
+    coreExifTitle: 'حوكمة EXIF',
+    coreExifSubtitle: 'كشف مخصص للواجهة الأمامية',
+    coreLangTitle: 'دعم كامل لـ RTL واللغات',
+    coreLangSubtitle: 'العربية، اليابانية، الإنجليزية',
+    skipToContent: 'الانتقال إلى المحتوى الرئيسي',
+    mainNavigation: 'التنقل الرئيسي',
+    themeToggleLight: 'التبديل إلى المظهر الفاتح',
+    themeToggleDark: 'التبديل إلى المظهر الداكن',
+    selectLanguage: 'اختر لغة العرض',
+    resultsCountLive: 'يتم عرض {count} عنصراً',
+    closeDialog: 'إغلاق النافذة المنبثقة',
+    catalogTableCaption: 'فهرس وسائط ومستندات الأرشيف',
   },
   ja: {
     brandTitle: 'FolioVault',
@@ -582,5 +768,67 @@ export const translations: Record<Language, TranslationDictionary> = {
     wordDocumentViewer: 'Word文書ビューアー',
     imageViewer: '高解像度画像インスペクター',
     words: '文字',
+    rssWidgetTitle: '最近追加されたメディア',
+    rssWidgetSubtitle: '最新10件のメディアとMedia RSSフィード',
+    rssFeedName: 'recently_added.rss',
+    downloadRssFeed: 'recently_added.rss をダウンロード',
+    viewRssFeed: 'RSS XMLフィードを表示',
+    copyRssXml: 'フィードXMLをコピー',
+    rssCopied: 'RSS XMLフィードをクリップボードにコピーしました！',
+    enableRssWidget: '最近の追加ウィジェットを有効化',
+    disableRssWidget: 'ウィジェットを無効化',
+    rssWidgetToggleAdmin: 'フロントエンドで「最近の追加 (Media RSS)」ウィジェットを表示',
+    rssWidgetEnabledNotice: 'Media RSSウィジェットは有効で、最新10件のアイテムを監視しています。',
+    rssWidgetDisabledNotice: '最近の追加ウィジェットは現在非表示です。',
+    recentlyAddedBadge: '新着',
+    latestAdditions: '最新10件',
+    downloadWord: 'Word文書をダウンロード',
+    downloadImage: '画像をダウンロード',
+    downloadPresentation: 'スライドをダウンロード',
+    tableActions: '操作',
+    visible: '公開',
+    hidden: '非表示',
+    downloadOn: 'DL許可',
+    downloadOff: 'DL禁止',
+    changePpt: 'PPT変更',
+    addPptDeck: '+ PPT添付',
+    noDescription: '説明文はありません',
+    mediaOrderingTitle: 'メディア並び替え＆デュアルDL設定',
+    autoAttachPptxNotice: '動画アップロード時に元PPTスライドのDL枠を自動付与',
+    batchDropHint: '複数ファイルやフォルダ階層を一括ドロップ。自動タグ付けとアルバム作成を行います。',
+    supportedFormatsHint: '対応形式: PDF, DOCX, DOC, ODT, MP4, WEBM, MOV, PPTX, PPT, ODP, JPG, PNG, WEBP, GIF',
+    authVerifying: 'ハッシュ照合中...',
+    defaultPasswordDemo: 'デモ用初期パスワード: admin123',
+    importYamlSuccess: 'YAML設定が正常にインポートされました！',
+    copyScript: 'スクリプトをコピー',
+    scriptCopied: 'コピー完了！',
+    generateSingleHtml: '単一HTML生成',
+    importYamlButton: 'YAMLをインポート',
+    exportYamlButton: 'YAMLをエクスポート',
+    gridMode: 'グリッド表示',
+    listMode: 'リスト表示',
+    resetFilterTag: 'リセット',
+    passwordMinLength: 'パスワードは4文字以上である必要があります。',
+    activeHashLabel: '適用中のSHA-256暗号化ハッシュ:',
+    supportedPhpVersions: '対応バージョン: PHP 8.1, PHP 8.2, PHP 8.3+（マルチフォーマットスキャナー）',
+    heroDescription: 'PDF文書、学術フォリオ、建築モノグラフ、展覧会図録の中央ギャラリー。データベースを一切使用せず、ポータブルなフラットデータ、SHA-256暗号化管理、完全なEXIFメタデータ保持により構築されています。',
+    heroVolBadge: '中央アーカイブ · データベースレス仕様',
+    heroFigCaption: '図1 — ベクター図版とメタデータ記録が保存されたアーカイブ調査フォリオ。',
+    coreDatabaselessTitle: 'DB完全不要',
+    coreDatabaselessSubtitle: 'YAML / フラットファイル保存',
+    coreCryptoTitle: '暗号化認証',
+    coreCryptoSubtitle: 'Salt付きSHA-256 Web Crypto',
+    coreExifTitle: 'EXIFガバナンス',
+    coreExifSubtitle: 'フロントエンド公開設定',
+    coreLangTitle: 'RTL＆多言語対応',
+    coreLangSubtitle: 'アラビア語・日本語・英語',
+    skipToContent: 'メインコンテンツへスキップ',
+    mainNavigation: 'メインナビゲーション',
+    themeToggleLight: 'ライトテーマに切り替え',
+    themeToggleDark: 'ダークテーマに切り替え',
+    selectLanguage: '表示言語を選択',
+    resultsCountLive: '{count}件のアイテムを表示中',
+    closeDialog: 'ダイアログを閉じる',
+    catalogTableCaption: 'メディアアーカイブ文書および資産カタログ',
   }
 };

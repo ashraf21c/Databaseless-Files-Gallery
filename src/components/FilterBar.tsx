@@ -78,7 +78,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
       <div>
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs font-semibold tracking-wider uppercase text-stone-500 dark:text-stone-400 flex items-center gap-1.5">
-            <Folder className="w-3.5 h-3.5" />
+            <Folder className="w-3.5 h-3.5" aria-hidden="true" />
             {t.filterByFolder}
           </span>
           <span className="text-xs text-stone-400 dark:text-stone-500 tabular-nums">
@@ -86,10 +86,15 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           </span>
         </div>
 
-        <div className="flex flex-wrap items-center gap-1.5 p-1 bg-stone-100 dark:bg-stone-800/80 rounded-lg border border-stone-200 dark:border-stone-700/80">
+        <div
+          role="region"
+          aria-label={t.filterByFolder}
+          className="flex flex-wrap items-center gap-1.5 p-1 bg-stone-100 dark:bg-stone-800/80 rounded-lg border border-stone-200 dark:border-stone-700/80"
+        >
           <button
             onClick={() => onSelectFolder('all')}
-            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors flex items-center gap-1.5 cursor-pointer ${
+            aria-pressed={selectedFolderId === 'all'}
+            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors flex items-center gap-1.5 cursor-pointer focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300 focus-visible:outline-none ${
               selectedFolderId === 'all'
                 ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 shadow-xs'
                 : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100'
@@ -108,7 +113,8 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               <button
                 key={folder.id}
                 onClick={() => onSelectFolder(folder.id)}
-                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors flex items-center gap-1.5 cursor-pointer ${
+                aria-pressed={selectedFolderId === folder.id}
+                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors flex items-center gap-1.5 cursor-pointer focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300 focus-visible:outline-none ${
                   selectedFolderId === folder.id
                     ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 shadow-xs'
                     : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100'
@@ -118,7 +124,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                 <span className="text-[11px] opacity-70 tabular-nums">({count})</span>
                 {!folder.allowDownload && (
                   <span title={t.downloadDisabled} className="inline-flex">
-                    <Lock className="w-2.5 h-2.5 text-stone-400" />
+                    <Lock className="w-2.5 h-2.5 text-stone-400" aria-label={t.downloadDisabled} />
                   </span>
                 )}
               </button>
@@ -129,15 +135,20 @@ export const FilterBar: React.FC<FilterBarProps> = ({
 
       {/* 2. Format Selector Tabs (PDF, Video, Word, Image) */}
       <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-        <div className="flex items-center gap-1.5 p-1 bg-stone-100 dark:bg-stone-800/80 rounded-lg border border-stone-200 dark:border-stone-700/80 text-xs">
+        <div
+          role="region"
+          aria-label={t.filterByFormat}
+          className="flex flex-wrap items-center gap-1.5 p-1 bg-stone-100 dark:bg-stone-800/80 rounded-lg border border-stone-200 dark:border-stone-700/80 text-xs"
+        >
           <span className="text-[11px] text-stone-400 font-medium px-2 flex items-center gap-1">
-            <Filter className="w-3 h-3" />
+            <Filter className="w-3 h-3" aria-hidden="true" />
             {t.filterByFormat}:
           </span>
 
           <button
             onClick={() => onSelectFormat('all')}
-            className={`px-2.5 py-1 rounded transition-colors cursor-pointer ${
+            aria-pressed={selectedFormat === 'all'}
+            className={`px-2.5 py-1 rounded transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300 focus-visible:outline-none ${
               selectedFormat === 'all'
                 ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 font-semibold shadow-xs'
                 : 'text-stone-600 dark:text-stone-400 hover:text-stone-900'
@@ -148,61 +159,66 @@ export const FilterBar: React.FC<FilterBarProps> = ({
 
           <button
             onClick={() => onSelectFormat('pdf')}
-            className={`px-2.5 py-1 rounded transition-colors flex items-center gap-1 cursor-pointer ${
+            aria-pressed={selectedFormat === 'pdf'}
+            className={`px-2.5 py-1 rounded transition-colors flex items-center gap-1 cursor-pointer focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300 focus-visible:outline-none ${
               selectedFormat === 'pdf'
                 ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 font-semibold shadow-xs'
                 : 'text-stone-600 dark:text-stone-400 hover:text-stone-900'
             }`}
           >
-            <FileText className="w-3 h-3 text-red-500" />
+            <FileText className="w-3 h-3 text-red-500" aria-hidden="true" />
             <span>{t.formatPdf} ({formatItemCounts['pdf'] || 0})</span>
           </button>
 
           <button
             onClick={() => onSelectFormat('video')}
-            className={`px-2.5 py-1 rounded transition-colors flex items-center gap-1 cursor-pointer ${
+            aria-pressed={selectedFormat === 'video'}
+            className={`px-2.5 py-1 rounded transition-colors flex items-center gap-1 cursor-pointer focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300 focus-visible:outline-none ${
               selectedFormat === 'video'
                 ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 font-semibold shadow-xs'
                 : 'text-stone-600 dark:text-stone-400 hover:text-stone-900'
             }`}
           >
-            <Video className="w-3 h-3 text-amber-500" />
+            <Video className="w-3 h-3 text-amber-500" aria-hidden="true" />
             <span>{t.formatVideo} ({formatItemCounts['video'] || 0})</span>
           </button>
 
           <button
             onClick={() => onSelectFormat('presentation')}
-            className={`px-2.5 py-1 rounded transition-colors flex items-center gap-1 cursor-pointer ${
+            aria-pressed={selectedFormat === 'presentation'}
+            className={`px-2.5 py-1 rounded transition-colors flex items-center gap-1 cursor-pointer focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300 focus-visible:outline-none ${
               selectedFormat === 'presentation'
                 ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 font-semibold shadow-xs'
                 : 'text-stone-600 dark:text-stone-400 hover:text-stone-900'
             }`}
           >
-            <Presentation className="w-3 h-3 text-orange-500" />
+            <Presentation className="w-3 h-3 text-orange-500" aria-hidden="true" />
             <span>{t.formatPresentation} ({formatItemCounts['presentation'] || 0})</span>
           </button>
 
           <button
             onClick={() => onSelectFormat('word')}
-            className={`px-2.5 py-1 rounded transition-colors flex items-center gap-1 cursor-pointer ${
+            aria-pressed={selectedFormat === 'word'}
+            className={`px-2.5 py-1 rounded transition-colors flex items-center gap-1 cursor-pointer focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300 focus-visible:outline-none ${
               selectedFormat === 'word'
                 ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 font-semibold shadow-xs'
                 : 'text-stone-600 dark:text-stone-400 hover:text-stone-900'
             }`}
           >
-            <FileSpreadsheet className="w-3 h-3 text-blue-500" />
+            <FileSpreadsheet className="w-3 h-3 text-blue-500" aria-hidden="true" />
             <span>{t.formatWord} ({formatItemCounts['word'] || 0})</span>
           </button>
 
           <button
             onClick={() => onSelectFormat('image')}
-            className={`px-2.5 py-1 rounded transition-colors flex items-center gap-1 cursor-pointer ${
+            aria-pressed={selectedFormat === 'image'}
+            className={`px-2.5 py-1 rounded transition-colors flex items-center gap-1 cursor-pointer focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300 focus-visible:outline-none ${
               selectedFormat === 'image'
                 ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 font-semibold shadow-xs'
                 : 'text-stone-600 dark:text-stone-400 hover:text-stone-900'
             }`}
           >
-            <ImageIcon className="w-3 h-3 text-emerald-500" />
+            <ImageIcon className="w-3 h-3 text-emerald-500" aria-hidden="true" />
             <span>{t.formatImage} ({formatItemCounts['image'] || 0})</span>
           </button>
         </div>
@@ -210,18 +226,18 @@ export const FilterBar: React.FC<FilterBarProps> = ({
 
       {/* 3. Tag Filter Bar */}
       {availableTags.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2 pt-1">
+        <div role="region" aria-label={t.filterByTag} className="flex flex-wrap items-center gap-2 pt-1">
           <span className="text-xs text-stone-500 dark:text-stone-400 flex items-center gap-1 font-medium">
-            <Tag className="w-3 h-3" />
+            <Tag className="w-3 h-3" aria-hidden="true" />
             {t.filterByTag}:
           </span>
 
           {selectedTags.length > 0 && (
             <button
               onClick={onClearTags}
-              className="text-xs text-stone-900 dark:text-stone-100 underline hover:opacity-80 transition-opacity cursor-pointer mr-1"
+              className="text-xs text-stone-900 dark:text-stone-100 underline hover:opacity-80 transition-opacity cursor-pointer mr-1 focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300 focus-visible:outline-none rounded"
             >
-              {t.allTags} (Reset)
+              {t.allTags} ({t.resetFilterTag})
             </button>
           )}
 
@@ -231,7 +247,8 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               <button
                 key={tag}
                 onClick={() => onToggleTag(tag)}
-                className={`px-2.5 py-1 text-xs rounded-md border transition-colors cursor-pointer ${
+                aria-pressed={isSelected}
+                className={`px-2.5 py-1 text-xs rounded-md border transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300 focus-visible:outline-none ${
                   isSelected
                     ? 'bg-stone-900 text-white dark:bg-stone-100 dark:text-stone-900 border-stone-900 dark:border-stone-100 font-medium'
                     : 'bg-white dark:bg-stone-800 text-stone-600 dark:text-stone-300 border-stone-200 dark:border-stone-700 hover:border-stone-400'
@@ -247,15 +264,19 @@ export const FilterBar: React.FC<FilterBarProps> = ({
       {/* 4. Search and Sort Ribbon */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2">
         
-        {/* Search input */}
+        {/* Search input with explicit label for screen readers */}
         <div className="relative flex-1 max-w-md">
-          <Search className="w-4 h-4 text-stone-400 absolute start-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <label htmlFor="gallery-search-input" className="sr-only">
+            {t.searchPlaceholder}
+          </label>
+          <Search className="w-4 h-4 text-stone-400 absolute start-3 top-1/2 -translate-y-1/2 pointer-events-none" aria-hidden="true" />
           <input
-            type="text"
+            id="gallery-search-input"
+            type="search"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder={t.searchPlaceholder}
-            className="w-full ps-9 pe-3 py-2 text-xs bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-md text-stone-900 dark:text-stone-100 placeholder-stone-400 focus:outline-none focus:ring-1 focus:ring-stone-500 transition-colors"
+            className="w-full ps-9 pe-3 py-2 text-xs bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-md text-stone-900 dark:text-stone-100 placeholder-stone-400 focus:outline-none focus:ring-1 focus:ring-stone-500 focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300 transition-colors"
           />
         </div>
 
@@ -264,11 +285,15 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           
           {/* Sort Dropdown */}
           <div className="flex items-center gap-1.5 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-md px-2 py-1.5 text-xs text-stone-700 dark:text-stone-300">
-            <span className="text-stone-400 text-[11px] whitespace-nowrap">{t.sortBy}:</span>
+            <label htmlFor="gallery-sort-field" className="text-stone-400 text-[11px] whitespace-nowrap cursor-pointer">
+              {t.sortBy}:
+            </label>
             <select
+              id="gallery-sort-field"
               value={sortField}
               onChange={(e) => onSortFieldChange(e.target.value as SortField)}
-              className="bg-transparent text-xs font-medium focus:outline-none cursor-pointer"
+              aria-label={t.sortBy}
+              className="bg-transparent text-xs font-medium focus:outline-none cursor-pointer focus-visible:ring-1 focus-visible:ring-stone-500 rounded"
             >
               <option value="name" className="dark:bg-stone-800">{t.sortName}</option>
               <option value="size" className="dark:bg-stone-800">{t.sortSize}</option>
@@ -284,38 +309,40 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           {/* Asc / Desc Toggle */}
           <button
             onClick={onToggleSortOrder}
-            className="p-2 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-md text-stone-700 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors cursor-pointer"
+            className="p-2 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-md text-stone-700 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300 focus-visible:outline-none"
             title={`${t.sortBy} (${sortOrder === 'asc' ? t.sortAsc : t.sortDesc})`}
-            aria-label="Toggle sort order"
+            aria-label={`${t.sortBy}: ${sortOrder === 'asc' ? t.sortAsc : t.sortDesc}`}
           >
-            <ArrowUpDown className="w-3.5 h-3.5" />
+            <ArrowUpDown className="w-3.5 h-3.5" aria-hidden="true" />
           </button>
 
           {/* View mode (Grid / List) */}
-          <div className="flex items-center bg-stone-100 dark:bg-stone-800 rounded-md p-0.5 border border-stone-200 dark:border-stone-700">
+          <div role="group" aria-label="View layout mode" className="flex items-center bg-stone-100 dark:bg-stone-800 rounded-md p-0.5 border border-stone-200 dark:border-stone-700">
             <button
               onClick={() => onViewModeChange('grid')}
-              className={`p-1.5 rounded transition-colors cursor-pointer ${
+              aria-pressed={viewMode === 'grid'}
+              className={`p-1.5 rounded transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300 focus-visible:outline-none ${
                 viewMode === 'grid'
                   ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 shadow-xs'
                   : 'text-stone-500 hover:text-stone-900 dark:hover:text-stone-100'
               }`}
-              title="Grid View"
-              aria-label="Grid view"
+              title={t.gridMode}
+              aria-label={t.gridMode}
             >
-              <LayoutGrid className="w-3.5 h-3.5" />
+              <LayoutGrid className="w-3.5 h-3.5" aria-hidden="true" />
             </button>
             <button
               onClick={() => onViewModeChange('list')}
-              className={`p-1.5 rounded transition-colors cursor-pointer ${
+              aria-pressed={viewMode === 'list'}
+              className={`p-1.5 rounded transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300 focus-visible:outline-none ${
                 viewMode === 'list'
                   ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 shadow-xs'
                   : 'text-stone-500 hover:text-stone-900 dark:hover:text-stone-100'
               }`}
-              title="List View"
-              aria-label="List view"
+              title={t.listMode}
+              aria-label={t.listMode}
             >
-              <List className="w-3.5 h-3.5" />
+              <List className="w-3.5 h-3.5" aria-hidden="true" />
             </button>
           </div>
 

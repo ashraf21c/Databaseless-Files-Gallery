@@ -29,7 +29,8 @@ import {
   Copy,
   RefreshCw,
   FolderTree,
-  Tags
+  Tags,
+  Rss
 } from 'lucide-react';
 import { AdminConfig, ExifDisplaySettings, FileType, Language, MediaItem, PdfFolder } from '../types';
 import { verifyPassword, hashPassword } from '../utils/crypto';
@@ -45,6 +46,7 @@ import {
   generateSingleHtmlBundle,
   PHP_SCANNER_GUIDE
 } from '../utils/storage';
+import { downloadRssFeed } from '../utils/rss';
 import { translations } from '../utils/translations';
 
 interface AdminModalProps {
@@ -128,6 +130,18 @@ export const AdminModal: React.FC<AdminModalProps> = ({
   // PHP Guide copy state
   const [copiedPhp, setCopiedPhp] = useState(false);
 
+  // Keyboard Escape listener
+  React.useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   // Handle Login
@@ -145,7 +159,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
         setAuthError(t.invalidPassword);
       }
     } catch (err) {
-      setAuthError('Authentication error. Please try again.');
+      setAuthError(t.invalidPassword);
     } finally {
       setIsVerifying(false);
     }
@@ -158,7 +172,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
     setPasswordSuccess('');
 
     if (newPassword.length < 4) {
-      setPasswordError('Password must be at least 4 characters long.');
+      setPasswordError(t.passwordMinLength);
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -176,7 +190,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
       setNewPassword('');
       setConfirmPassword('');
     } catch (err) {
-      setPasswordError('Failed to hash and save password.');
+      setPasswordError(t.passwordMismatch);
     }
   };
 
@@ -413,7 +427,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
 
     setIsUploading(true);
     setUploadProgress(5);
-    setUploadStatusText('Analyzing dropped hierarchy and container formats...');
+    setUploadStatusText(t.uploading);
     setUploadedRecentSummary([]);
 
     // Extract unique detected folder names from dragged items
@@ -622,9 +636,9 @@ export const AdminModal: React.FC<AdminModalProps> = ({
         if (result.settings) {
           onUpdateConfig({ ...config, ...result.settings });
         }
-        alert('YAML Configuration successfully imported!');
+        alert(t.importYamlSuccess);
       } catch (err: any) {
-        alert('Error parsing YAML: ' + err.message);
+        alert(err.message || t.invalidPassword);
       }
     };
     reader.readAsText(file);
@@ -649,7 +663,12 @@ export const AdminModal: React.FC<AdminModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-stone-950/70 backdrop-blur-sm animate-in fade-in duration-200">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="admin-dialog-title"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-stone-950/70 backdrop-blur-sm animate-in fade-in duration-200"
+    >
       
       <div className="relative w-full max-w-4xl max-h-[92vh] bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-xl shadow-2xl flex flex-col overflow-hidden text-stone-900 dark:text-stone-100">
         
@@ -657,11 +676,11 @@ export const AdminModal: React.FC<AdminModalProps> = ({
         <div className="h-16 px-6 border-b border-stone-200 dark:border-stone-800 flex items-center justify-between shrink-0 bg-stone-50/80 dark:bg-stone-900/80">
           <div className="flex items-center gap-2.5">
             <div className="p-2 bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 rounded-md">
-              {isAdmin ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+              {isAdmin ? <Unlock className="w-4 h-4" aria-hidden="true" /> : <Lock className="w-4 h-4" aria-hidden="true" />}
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-base font-serif font-medium text-stone-900 dark:text-stone-100">
+                <h2 id="admin-dialog-title" className="text-base font-serif font-medium text-stone-900 dark:text-stone-100">
                   {isAdmin ? t.adminDashboardTitle : t.adminPortal}
                 </h2>
                 <span className="text-[10px] bg-stone-200 dark:bg-stone-800 px-2 py-0.5 rounded font-mono font-semibold">v2.0</span>
@@ -674,9 +693,10 @@ export const AdminModal: React.FC<AdminModalProps> = ({
 
           <button
             onClick={onClose}
-            className="p-2 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 rounded-md hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
+            className="p-2 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 rounded-md hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300 focus-visible:outline-none"
+            aria-label={t.closeDialog}
           >
-            <X className="w-4 h-4" />
+            <X className="w-4 h-4" aria-hidden="true" />
           </button>
         </div>
 
@@ -686,30 +706,37 @@ export const AdminModal: React.FC<AdminModalProps> = ({
           /* LOGIN SCREEN */
           <div className="p-8 max-w-md mx-auto my-auto w-full space-y-6">
             <div className="text-center space-y-2">
-              <KeyRound className="w-8 h-8 text-stone-700 dark:text-stone-300 mx-auto stroke-[1.5]" />
+              <KeyRound className="w-8 h-8 text-stone-700 dark:text-stone-300 mx-auto stroke-[1.5]" aria-hidden="true" />
               <h3 className="text-lg font-serif font-medium text-stone-900 dark:text-stone-100">
                 {t.enterPassword}
               </h3>
               <p className="text-xs text-stone-500">
-                Encrypted SHA-256 verification. Plaintext passwords are never stored.
+                {t.hashEncryptionNote}
               </p>
             </div>
 
             <form onSubmit={handleLoginSubmit} className="space-y-4">
               <div>
+                <label htmlFor="admin-login-password" className="sr-only">
+                  {t.passwordPlaceholder}
+                </label>
                 <input
+                  id="admin-login-password"
                   type="password"
                   value={passwordInput}
                   onChange={(e) => setPasswordInput(e.target.value)}
                   placeholder={t.passwordPlaceholder}
+                  aria-required="true"
+                  aria-invalid={Boolean(authError)}
+                  aria-describedby={authError ? "admin-auth-error" : undefined}
                   autoFocus
-                  className="w-full px-3.5 py-2.5 text-xs bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-md text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-1 focus:ring-stone-600"
+                  className="w-full px-3.5 py-2.5 text-xs bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-md text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-1 focus:ring-stone-600 focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300"
                 />
               </div>
 
               {authError && (
-                <div className="p-2.5 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 rounded text-xs text-red-600 dark:text-red-400 flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 shrink-0" />
+                <div id="admin-auth-error" role="alert" className="p-2.5 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 rounded text-xs text-red-600 dark:text-red-400 flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
                   <span>{authError}</span>
                 </div>
               )}
@@ -717,13 +744,13 @@ export const AdminModal: React.FC<AdminModalProps> = ({
               <button
                 type="submit"
                 disabled={isVerifying || !passwordInput}
-                className="w-full py-2.5 text-xs font-semibold bg-stone-900 hover:bg-stone-800 dark:bg-stone-100 dark:hover:bg-white text-white dark:text-stone-900 rounded-md transition-colors disabled:opacity-50 cursor-pointer"
+                className="w-full py-2.5 text-xs font-semibold bg-stone-900 hover:bg-stone-800 dark:bg-stone-100 dark:hover:bg-white text-white dark:text-stone-900 rounded-md transition-colors disabled:opacity-50 cursor-pointer focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300 focus-visible:outline-none"
               >
-                {isVerifying ? 'Verifying Hash...' : t.loginButton}
+                {isVerifying ? t.authVerifying : t.loginButton}
               </button>
 
               <div className="text-center text-[11px] text-stone-400">
-                Default password for demonstration: <span className="font-mono font-medium text-stone-600 dark:text-stone-300">admin123</span>
+                {t.defaultPasswordDemo}
               </div>
             </form>
           </div>
@@ -734,64 +761,84 @@ export const AdminModal: React.FC<AdminModalProps> = ({
           <div className="flex-1 flex flex-col min-h-0">
             
             {/* Tabs Navigation */}
-            <div className="px-6 border-b border-stone-200 dark:border-stone-800 flex items-center gap-2 overflow-x-auto bg-stone-50/50 dark:bg-stone-950/20 text-xs shrink-0">
+            <div role="tablist" aria-label="Admin settings tabs" className="px-6 border-b border-stone-200 dark:border-stone-800 flex items-center gap-2 overflow-x-auto bg-stone-50/50 dark:bg-stone-950/20 text-xs shrink-0">
               <button
+                role="tab"
+                id="admin-tab-folders"
+                aria-selected={activeTab === 'folders'}
+                aria-controls="admin-tabpanel-folders"
                 onClick={() => setActiveTab('folders')}
-                className={`py-3 px-3 font-medium border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                className={`py-3 px-3 font-medium border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap cursor-pointer focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300 focus-visible:outline-none ${
                   activeTab === 'folders'
                     ? 'border-stone-900 dark:border-stone-100 text-stone-900 dark:text-stone-100'
                     : 'border-transparent text-stone-500 hover:text-stone-800 dark:hover:text-stone-200'
                 }`}
               >
-                <Folder className="w-3.5 h-3.5" />
+                <Folder className="w-3.5 h-3.5" aria-hidden="true" />
                 <span>{t.tabFolders}</span>
               </button>
 
               <button
+                role="tab"
+                id="admin-tab-upload"
+                aria-selected={activeTab === 'upload'}
+                aria-controls="admin-tabpanel-upload"
                 onClick={() => setActiveTab('upload')}
-                className={`py-3 px-3 font-medium border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                className={`py-3 px-3 font-medium border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap cursor-pointer focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300 focus-visible:outline-none ${
                   activeTab === 'upload'
                     ? 'border-stone-900 dark:border-stone-100 text-stone-900 dark:text-stone-100'
                     : 'border-transparent text-stone-500 hover:text-stone-800 dark:hover:text-stone-200'
                 }`}
               >
-                <Upload className="w-3.5 h-3.5" />
+                <Upload className="w-3.5 h-3.5" aria-hidden="true" />
                 <span>{t.tabUpload}</span>
               </button>
 
               <button
+                role="tab"
+                id="admin-tab-exif"
+                aria-selected={activeTab === 'exif'}
+                aria-controls="admin-tabpanel-exif"
                 onClick={() => setActiveTab('exif')}
-                className={`py-3 px-3 font-medium border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                className={`py-3 px-3 font-medium border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap cursor-pointer focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300 focus-visible:outline-none ${
                   activeTab === 'exif'
                     ? 'border-stone-900 dark:border-stone-100 text-stone-900 dark:text-stone-100'
                     : 'border-transparent text-stone-500 hover:text-stone-800 dark:hover:text-stone-200'
                 }`}
               >
-                <Sliders className="w-3.5 h-3.5" />
+                <Sliders className="w-3.5 h-3.5" aria-hidden="true" />
                 <span>{t.tabExif}</span>
               </button>
 
               <button
+                role="tab"
+                id="admin-tab-security"
+                aria-selected={activeTab === 'security'}
+                aria-controls="admin-tabpanel-security"
                 onClick={() => setActiveTab('security')}
-                className={`py-3 px-3 font-medium border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                className={`py-3 px-3 font-medium border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap cursor-pointer focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300 focus-visible:outline-none ${
                   activeTab === 'security'
                     ? 'border-stone-900 dark:border-stone-100 text-stone-900 dark:text-stone-100'
                     : 'border-transparent text-stone-500 hover:text-stone-800 dark:hover:text-stone-200'
                 }`}
               >
-                <KeyRound className="w-3.5 h-3.5" />
+                <KeyRound className="w-3.5 h-3.5" aria-hidden="true" />
                 <span>{t.tabSecurity}</span>
               </button>
 
               <button
+                role="tab"
+                id="admin-tab-export"
+                aria-selected={activeTab === 'export'}
+                aria-controls="admin-tabpanel-export"
                 onClick={() => setActiveTab('export')}
-                className={`py-3 px-3 font-medium border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                className={`py-3 px-3 font-medium border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap cursor-pointer focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300 focus-visible:outline-none ${
                   activeTab === 'export'
                     ? 'border-stone-900 dark:border-stone-100 text-stone-900 dark:text-stone-100'
                     : 'border-transparent text-stone-500 hover:text-stone-800 dark:hover:text-stone-200'
                 }`}
               >
-                <FileDown className="w-3.5 h-3.5" />
+                <FileDown className="w-3.5 h-3.5" aria-hidden="true" />
                 <span>{t.tabExport}</span>
               </button>
             </div>
@@ -801,7 +848,12 @@ export const AdminModal: React.FC<AdminModalProps> = ({
               
               {/* TAB 1: FOLDERS & ALBUMS MANAGEMENT */}
               {activeTab === 'folders' && (
-                <div className="space-y-6">
+                <div
+                  role="tabpanel"
+                  id="admin-tabpanel-folders"
+                  aria-labelledby="admin-tab-folders"
+                  className="space-y-6"
+                >
                   
                   {/* Create New Folder Button / Form */}
                   <div className="flex items-center justify-between">
@@ -816,9 +868,10 @@ export const AdminModal: React.FC<AdminModalProps> = ({
 
                     <button
                       onClick={() => setIsCreatingFolder(!isCreatingFolder)}
-                      className="px-3 py-1.5 text-xs font-medium bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 rounded-md hover:opacity-90 transition-opacity flex items-center gap-1.5 cursor-pointer"
+                      aria-expanded={isCreatingFolder}
+                      className="px-3 py-1.5 text-xs font-medium bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 rounded-md hover:opacity-90 transition-opacity flex items-center gap-1.5 cursor-pointer focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300 focus-visible:outline-none"
                     >
-                      <FolderPlus className="w-3.5 h-3.5" />
+                      <FolderPlus className="w-3.5 h-3.5" aria-hidden="true" />
                       <span>{t.newFolder}</span>
                     </button>
                   </div>
@@ -827,48 +880,52 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                     <form onSubmit={handleCreateFolder} className="p-4 bg-stone-50 dark:bg-stone-800/60 rounded-lg border border-stone-200 dark:border-stone-700 space-y-3">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                          <label className="text-[11px] font-medium text-stone-600 dark:text-stone-400 block mb-1">
+                          <label htmlFor="new-folder-name" className="text-[11px] font-medium text-stone-600 dark:text-stone-400 block mb-1">
                             {t.folderName} *
                           </label>
                           <input
+                            id="new-folder-name"
                             type="text"
                             required
                             value={newFolderName}
                             onChange={(e) => setNewFolderName(e.target.value)}
                             placeholder="e.g. Video Keynotes & Symposia"
-                            className="w-full px-3 py-1.5 text-xs bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded"
+                            className="w-full px-3 py-1.5 text-xs bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300 focus-visible:outline-none"
                           />
                         </div>
                         <div>
-                          <label className="text-[11px] font-medium text-stone-600 dark:text-stone-400 block mb-1">
+                          <label htmlFor="new-folder-tags" className="text-[11px] font-medium text-stone-600 dark:text-stone-400 block mb-1">
                             {t.folderTags}
                           </label>
                           <input
+                            id="new-folder-tags"
                             type="text"
                             value={newFolderTags}
                             onChange={(e) => setNewFolderTags(e.target.value)}
                             placeholder="Video, Keynote, Presentations"
-                            className="w-full px-3 py-1.5 text-xs bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded"
+                            className="w-full px-3 py-1.5 text-xs bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300 focus-visible:outline-none"
                           />
                         </div>
                       </div>
 
                       <div>
-                        <label className="text-[11px] font-medium text-stone-600 dark:text-stone-400 block mb-1">
+                        <label htmlFor="new-folder-desc" className="text-[11px] font-medium text-stone-600 dark:text-stone-400 block mb-1">
                           {t.folderDescription}
                         </label>
                         <input
+                          id="new-folder-desc"
                           type="text"
                           value={newFolderDesc}
                           onChange={(e) => setNewFolderDesc(e.target.value)}
                           placeholder="Brief description for gallery users"
-                          className="w-full px-3 py-1.5 text-xs bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded"
+                          className="w-full px-3 py-1.5 text-xs bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300 focus-visible:outline-none"
                         />
                       </div>
 
                       <div className="flex items-center justify-between pt-2">
-                        <label className="flex items-center gap-2 text-xs text-stone-700 dark:text-stone-300 cursor-pointer">
+                        <label htmlFor="new-folder-allow-download" className="flex items-center gap-2 text-xs text-stone-700 dark:text-stone-300 cursor-pointer">
                           <input
+                            id="new-folder-allow-download"
                             type="checkbox"
                             checked={newFolderAllowDownload}
                             onChange={(e) => setNewFolderAllowDownload(e.target.checked)}
@@ -881,13 +938,13 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                           <button
                             type="button"
                             onClick={() => setIsCreatingFolder(false)}
-                            className="px-3 py-1.5 text-xs text-stone-600 dark:text-stone-400"
+                            className="px-3 py-1.5 text-xs text-stone-600 dark:text-stone-400 cursor-pointer rounded focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300 focus-visible:outline-none"
                           >
                             {t.cancel}
                           </button>
                           <button
                             type="submit"
-                            className="px-3.5 py-1.5 text-xs font-semibold bg-stone-900 text-white rounded"
+                            className="px-3.5 py-1.5 text-xs font-semibold bg-stone-900 text-white rounded cursor-pointer focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300 focus-visible:outline-none"
                           >
                             {t.createFolder}
                           </button>
@@ -933,7 +990,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                                 </span>
                               </div>
                               <div className="text-[11px] text-stone-500 truncate max-w-sm">
-                                {folder.description || 'No description'}
+                                {folder.description || t.noDescription}
                               </div>
                             </div>
                           </div>
@@ -949,7 +1006,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                               title={folder.visibleInFrontend ? t.visibleInFrontend : t.hiddenInFrontend}
                             >
                               {folder.visibleInFrontend ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
-                              <span className="text-[11px]">{folder.visibleInFrontend ? 'Visible' : 'Hidden'}</span>
+                              <span className="text-[11px]">{folder.visibleInFrontend ? t.visible : t.hidden}</span>
                             </button>
 
                             <button
@@ -962,7 +1019,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                               title={folder.allowDownload ? t.downloadsEnabled : t.downloadsDisabled}
                             >
                               <Lock className="w-3 h-3" />
-                              <span className="text-[11px]">{folder.allowDownload ? 'Download ON' : 'Download OFF'}</span>
+                              <span className="text-[11px]">{folder.allowDownload ? t.downloadOn : t.downloadOff}</span>
                             </button>
 
                             <button
@@ -981,7 +1038,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                   {/* Multi-Format Media Rearrange and PowerPoint link manager */}
                   <div className="pt-4 space-y-3">
                     <h5 className="text-xs font-semibold text-stone-700 dark:text-stone-300 uppercase tracking-wider">
-                      Media Ordering & Dual Download Setup ({items.length} items)
+                      {t.mediaOrderingTitle} ({items.length} {t.itemsCount})
                     </h5>
 
                     <div className="divide-y divide-stone-100 dark:divide-stone-800 border border-stone-200 dark:border-stone-800 rounded-lg max-h-72 overflow-y-auto bg-white dark:bg-stone-900 text-xs">
@@ -995,14 +1052,16 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                                 <button
                                   onClick={() => handleMoveItem(index, 'up')}
                                   disabled={index === 0}
-                                  className="text-stone-400 hover:text-stone-700 disabled:opacity-20"
+                                  className="text-stone-400 hover:text-stone-700 disabled:opacity-20 cursor-pointer"
+                                  title={t.moveUp}
                                 >
                                   <ArrowUp className="w-3 h-3" />
                                 </button>
                                 <button
                                   onClick={() => handleMoveItem(index, 'down')}
                                   disabled={index === items.length - 1}
-                                  className="text-stone-400 hover:text-stone-700 disabled:opacity-20"
+                                  className="text-stone-400 hover:text-stone-700 disabled:opacity-20 cursor-pointer"
+                                  title={t.moveDown}
                                 >
                                   <ArrowDown className="w-3 h-3" />
                                 </button>
@@ -1021,7 +1080,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                                     <>
                                       <span>·</span>
                                       <span className="text-amber-600 dark:text-amber-400 font-medium">
-                                        PPT: {item.powerpointFileName || 'No slide deck linked'}
+                                        PPT: {item.powerpointFileName || t.noPowerpointAttached}
                                       </span>
                                     </>
                                   )}
@@ -1038,10 +1097,10 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                                     pptxInputRef.current?.click();
                                   }}
                                   className="text-[11px] px-2 py-0.5 rounded border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300 hover:bg-amber-100 transition-colors cursor-pointer flex items-center gap-1"
-                                  title="Attach or replace original PowerPoint slide deck"
+                                  title={t.attachPowerpoint}
                                 >
                                   <Presentation className="w-3 h-3" />
-                                  <span>{item.powerpointFileName ? 'Change PPT' : '+ PPT Deck'}</span>
+                                  <span>{item.powerpointFileName ? t.changePpt : t.addPptDeck}</span>
                                 </button>
                               )}
 
@@ -1053,13 +1112,13 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                                     : 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800'
                                 }`}
                               >
-                                {item.allowDownload ? 'Download ON' : 'Download OFF'}
+                                {item.allowDownload ? t.downloadOn : t.downloadOff}
                               </button>
 
                               <button
                                 onClick={() => handleDeleteItem(item.id)}
                                 className="text-stone-400 hover:text-red-600 p-1 cursor-pointer"
-                                title="Delete"
+                                title={t.confirmDeleteFile}
                               >
                                 <Trash2 className="w-3 h-3" />
                               </button>
@@ -1084,7 +1143,12 @@ export const AdminModal: React.FC<AdminModalProps> = ({
 
               {/* TAB 2: UPLOAD GUI (MULTI-FORMAT: PDF, WORD, VIDEO, IMAGES) */}
               {activeTab === 'upload' && (
-                <div className="space-y-6">
+                <div
+                  role="tabpanel"
+                  id="admin-tabpanel-upload"
+                  aria-labelledby="admin-tab-upload"
+                  className="space-y-6"
+                >
                   <div>
                     <h4 className="text-sm font-semibold text-stone-900 dark:text-stone-100">
                       {t.uploadTitle}
@@ -1097,13 +1161,14 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                   {/* Target Folder Selector & Video PPT companion option */}
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-stone-50 dark:bg-stone-800/50 rounded-lg border border-stone-200 dark:border-stone-700 text-xs">
                     <div className="flex items-center gap-2">
-                      <span className="font-medium text-stone-700 dark:text-stone-300 whitespace-nowrap">
+                      <label htmlFor="upload-target-folder" className="font-medium text-stone-700 dark:text-stone-300 whitespace-nowrap cursor-pointer">
                         {t.uploadFolderSelect}:
-                      </span>
+                      </label>
                       <select
+                        id="upload-target-folder"
                         value={uploadTargetFolder}
                         onChange={(e) => setUploadTargetFolder(e.target.value)}
-                        className="px-3 py-1.5 bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded text-xs font-medium focus:outline-none"
+                        className="px-3 py-1.5 bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded text-xs font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300"
                       >
                         {folders.map(f => (
                           <option key={f.id} value={f.id}>
@@ -1113,14 +1178,15 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                       </select>
                     </div>
 
-                    <label className="flex items-center gap-2 text-stone-700 dark:text-stone-300 cursor-pointer">
+                    <label htmlFor="upload-attach-pptx" className="flex items-center gap-2 text-stone-700 dark:text-stone-300 cursor-pointer">
                       <input
+                        id="upload-attach-pptx"
                         type="checkbox"
                         checked={attachPptxToVideo}
                         onChange={(e) => setAttachPptxToVideo(e.target.checked)}
                         className="rounded"
                       />
-                      <span>Auto-provision PowerPoint slide deck download for video uploads</span>
+                      <span>{t.autoAttachPptxNotice}</span>
                     </label>
                   </div>
 
@@ -1128,21 +1194,22 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                   <div className="p-4 bg-stone-50 dark:bg-stone-800/60 rounded-xl border border-stone-200 dark:border-stone-700 space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <FolderTree className="w-4 h-4 text-stone-700 dark:text-stone-300" />
+                        <FolderTree className="w-4 h-4 text-stone-700 dark:text-stone-300" aria-hidden="true" />
                         <h5 className="text-xs font-semibold text-stone-900 dark:text-stone-100">
                           {t.batchProcessingTitle}
                         </h5>
                       </div>
                       {batchStats && (
-                        <div className="text-[11px] font-mono text-stone-500 bg-white dark:bg-stone-900 px-2 py-0.5 rounded border border-stone-200 dark:border-stone-700">
+                        <div className="text-[11px] font-mono text-stone-500 bg-white dark:bg-stone-900 px-2 py-0.5 rounded border border-stone-200 dark:border-stone-700" aria-live="polite">
                           {batchStats.totalFiles} {t.batchItemsDetected} ({batchStats.totalFolders} folders)
                         </div>
                       )}
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                      <label className="flex items-start gap-2.5 text-stone-700 dark:text-stone-300 cursor-pointer p-2 bg-white dark:bg-stone-900/80 rounded-lg border border-stone-200/80 dark:border-stone-700/80">
+                      <label htmlFor="batch-auto-create-folders" className="flex items-start gap-2.5 text-stone-700 dark:text-stone-300 cursor-pointer p-2 bg-white dark:bg-stone-900/80 rounded-lg border border-stone-200/80 dark:border-stone-700/80">
                         <input
+                          id="batch-auto-create-folders"
                           type="checkbox"
                           checked={autoCreateFolders}
                           onChange={(e) => setAutoCreateFolders(e.target.checked)}
@@ -1158,8 +1225,9 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                         </div>
                       </label>
 
-                      <label className="flex items-start gap-2.5 text-stone-700 dark:text-stone-300 cursor-pointer p-2 bg-white dark:bg-stone-900/80 rounded-lg border border-stone-200/80 dark:border-stone-700/80">
+                      <label htmlFor="batch-auto-tag-folders" className="flex items-start gap-2.5 text-stone-700 dark:text-stone-300 cursor-pointer p-2 bg-white dark:bg-stone-900/80 rounded-lg border border-stone-200/80 dark:border-stone-700/80">
                         <input
+                          id="batch-auto-tag-folders"
                           type="checkbox"
                           checked={autoTagFromFolders}
                           onChange={(e) => setAutoTagFromFolders(e.target.checked)}
@@ -1203,9 +1271,9 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                     }`}
                   >
                     <div className="relative inline-block">
-                      <Upload className="w-10 h-10 text-stone-400 mx-auto stroke-[1.2]" />
+                      <Upload className="w-10 h-10 text-stone-400 mx-auto stroke-[1.2]" aria-hidden="true" />
                       {autoTagFromFolders && (
-                        <Tags className="w-4 h-4 text-stone-600 dark:text-stone-300 absolute -bottom-1 -right-1 bg-white dark:bg-stone-900 rounded-full p-0.5 border border-stone-200 dark:border-stone-700" />
+                        <Tags className="w-4 h-4 text-stone-600 dark:text-stone-300 absolute -bottom-1 -right-1 bg-white dark:bg-stone-900 rounded-full p-0.5 border border-stone-200 dark:border-stone-700" aria-hidden="true" />
                       )}
                     </div>
 
@@ -1214,10 +1282,10 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                         {t.uploadDragDrop}
                       </p>
                       <p className="text-[11px] text-stone-500 mt-1">
-                        Drop multiple files or entire folder trees at once. Auto-tags items and creates collection albums.
+                        {t.batchDropHint}
                       </p>
                       <p className="text-[10px] text-stone-400 mt-0.5">
-                        Supported: PDF, DOCX, DOC, ODT, MP4, WEBM, MOV, PPTX, PPT, ODP, JPG, PNG, WEBP, GIF.
+                        {t.supportedFormatsHint}
                       </p>
                     </div>
 
@@ -1226,9 +1294,9 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
                         disabled={isUploading}
-                        className="px-4 py-2 bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 text-xs font-semibold rounded shadow-xs hover:opacity-90 transition-opacity cursor-pointer flex items-center gap-1.5"
+                        className="px-4 py-2 bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 text-xs font-semibold rounded shadow-xs hover:opacity-90 transition-opacity cursor-pointer flex items-center gap-1.5 focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300 focus-visible:outline-none"
                       >
-                        <Upload className="w-3.5 h-3.5" />
+                        <Upload className="w-3.5 h-3.5" aria-hidden="true" />
                         <span>{t.uploadSelectFiles}</span>
                       </button>
 
@@ -1236,9 +1304,9 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                         type="button"
                         onClick={() => folderInputRef.current?.click()}
                         disabled={isUploading}
-                        className="px-4 py-2 bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 text-stone-800 dark:text-stone-200 text-xs font-semibold rounded shadow-xs hover:bg-stone-50 dark:hover:bg-stone-700 transition-colors cursor-pointer flex items-center gap-1.5"
+                        className="px-4 py-2 bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 text-stone-800 dark:text-stone-200 text-xs font-semibold rounded shadow-xs hover:bg-stone-50 dark:hover:bg-stone-700 transition-colors cursor-pointer flex items-center gap-1.5 focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300 focus-visible:outline-none"
                       >
-                        <FolderTree className="w-3.5 h-3.5" />
+                        <FolderTree className="w-3.5 h-3.5" aria-hidden="true" />
                         <span>{t.uploadSelectFolder}</span>
                       </button>
                     </div>
@@ -1247,6 +1315,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                       ref={fileInputRef}
                       type="file"
                       multiple
+                      aria-label="Upload files input"
                       accept="application/pdf,.pdf,video/mp4,.mp4,.webm,.mov,.docx,.doc,.odt,.pptx,.ppt,.odp,image/*,.jpg,.jpeg,.png,.webp,.gif"
                       onChange={(e) => {
                         if (e.target.files) {
@@ -1264,6 +1333,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                       webkitdirectory=""
                       directory=""
                       multiple
+                      aria-label="Upload folders input"
                       onChange={(e) => {
                         if (e.target.files) {
                           const batch = extractFilesFromFileList(e.target.files);
@@ -1275,7 +1345,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                     />
                   </div>
 
-                  {/* Upload Progress GUI */}
+                  {/* Upload Progress GUI with ARIA role=progressbar */}
                   {isUploading && (
                     <div className="p-4 bg-stone-100 dark:bg-stone-800 rounded-lg border border-stone-200 dark:border-stone-700 space-y-2">
                       <div className="flex items-center justify-between text-xs">
@@ -1287,14 +1357,21 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                         </span>
                       </div>
 
-                      <div className="w-full bg-stone-200 dark:bg-stone-700 rounded-full h-2 overflow-hidden">
+                      <div
+                        role="progressbar"
+                        aria-valuenow={uploadProgress}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-label={t.uploadProgress}
+                        className="w-full bg-stone-200 dark:bg-stone-700 rounded-full h-2 overflow-hidden"
+                      >
                         <div
                           className="bg-stone-900 dark:bg-stone-100 h-2 rounded-full transition-all duration-200"
                           style={{ width: `${uploadProgress}%` }}
                         />
                       </div>
 
-                      <div className="text-[11px] text-stone-500 font-mono">
+                      <div role="status" aria-live="polite" className="text-[11px] text-stone-500 font-mono">
                         {uploadStatusText}
                       </div>
                     </div>
@@ -1302,9 +1379,9 @@ export const AdminModal: React.FC<AdminModalProps> = ({
 
                   {/* Summary of Parsed EXIF */}
                   {uploadedRecentSummary.length > 0 && (
-                    <div className="p-4 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-lg space-y-2 text-xs">
+                    <div role="status" aria-live="polite" className="p-4 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-lg space-y-2 text-xs">
                       <div className="font-semibold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600" aria-hidden="true" />
                         <span>{t.uploadComplete}</span>
                       </div>
                       <ul className="list-disc list-inside space-y-1 text-emerald-700 dark:text-emerald-400 text-[11px] font-mono">
@@ -1320,7 +1397,12 @@ export const AdminModal: React.FC<AdminModalProps> = ({
 
               {/* TAB 3: EXIF & METADATA GOVERNANCE */}
               {activeTab === 'exif' && (
-                <div className="space-y-6">
+                <div
+                  role="tabpanel"
+                  id="admin-tabpanel-exif"
+                  aria-labelledby="admin-tab-exif"
+                  className="space-y-6"
+                >
                   <div>
                     <h4 className="text-sm font-semibold text-stone-900 dark:text-stone-100">
                       {t.exifGovernanceTitle}
@@ -1358,8 +1440,11 @@ export const AdminModal: React.FC<AdminModalProps> = ({
 
                           <button
                             type="button"
+                            role="switch"
+                            aria-checked={isEnabled}
+                            aria-label={`${row.label}: ${isEnabled ? t.showInFrontend : t.visibleToAdminOnly}`}
                             onClick={() => handleToggleExifField(row.key as keyof ExifDisplaySettings)}
-                            className={`px-3 py-1.5 text-xs font-medium rounded border transition-colors cursor-pointer ${
+                            className={`px-3 py-1.5 text-xs font-medium rounded border transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300 focus-visible:outline-none ${
                               isEnabled
                                 ? 'bg-stone-900 text-white dark:bg-stone-100 dark:text-stone-900 border-stone-900 dark:border-stone-100'
                                 : 'bg-stone-100 text-stone-500 dark:bg-stone-800 dark:text-stone-400 border-stone-200 dark:border-stone-700'
@@ -1376,7 +1461,12 @@ export const AdminModal: React.FC<AdminModalProps> = ({
 
               {/* TAB 4: SECURITY & ENCRYPTED HASH */}
               {activeTab === 'security' && (
-                <div className="space-y-6">
+                <div
+                  role="tabpanel"
+                  id="admin-tabpanel-security"
+                  aria-labelledby="admin-tab-security"
+                  className="space-y-6"
+                >
                   <div>
                     <h4 className="text-sm font-semibold text-stone-900 dark:text-stone-100">
                       {t.changePassword}
@@ -1397,46 +1487,48 @@ export const AdminModal: React.FC<AdminModalProps> = ({
 
                   <form onSubmit={handlePasswordChange} className="max-w-md space-y-4">
                     <div>
-                      <label className="text-xs font-medium text-stone-700 dark:text-stone-300 block mb-1">
+                      <label htmlFor="admin-new-password" className="text-xs font-medium text-stone-700 dark:text-stone-300 block mb-1">
                         {t.newPassword}
                       </label>
                       <input
+                        id="admin-new-password"
                         type="password"
                         required
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
-                        className="w-full px-3 py-2 text-xs bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-1 focus:ring-stone-600"
+                        className="w-full px-3 py-2 text-xs bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded text-stone-900 dark:text-stone-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300"
                       />
                     </div>
 
                     <div>
-                      <label className="text-xs font-medium text-stone-700 dark:text-stone-300 block mb-1">
+                      <label htmlFor="admin-confirm-password" className="text-xs font-medium text-stone-700 dark:text-stone-300 block mb-1">
                         {t.confirmPassword}
                       </label>
                       <input
+                        id="admin-confirm-password"
                         type="password"
                         required
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
-                        className="w-full px-3 py-2 text-xs bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-1 focus:ring-stone-600"
+                        className="w-full px-3 py-2 text-xs bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded text-stone-900 dark:text-stone-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300"
                       />
                     </div>
 
                     {passwordError && (
-                      <div className="p-2.5 bg-red-50 dark:bg-red-950/40 border border-red-200 rounded text-xs text-red-600">
+                      <div role="alert" aria-live="assertive" className="p-2.5 bg-red-50 dark:bg-red-950/40 border border-red-200 rounded text-xs text-red-600">
                         {passwordError}
                       </div>
                     )}
 
                     {passwordSuccess && (
-                      <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 rounded text-xs text-emerald-700">
+                      <div role="status" aria-live="polite" className="p-2.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 rounded text-xs text-emerald-700">
                         {passwordSuccess}
                       </div>
                     )}
 
                     <button
                       type="submit"
-                      className="px-4 py-2 bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 text-xs font-semibold rounded hover:opacity-90 transition-opacity cursor-pointer"
+                      className="px-4 py-2 bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 text-xs font-semibold rounded hover:opacity-90 transition-opacity cursor-pointer focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300 focus-visible:outline-none"
                     >
                       {t.savePassword}
                     </button>
@@ -1446,7 +1538,12 @@ export const AdminModal: React.FC<AdminModalProps> = ({
 
               {/* TAB 5: DATABASELESS EXPORT & PHP GUIDE */}
               {activeTab === 'export' && (
-                <div className="space-y-6">
+                <div
+                  role="tabpanel"
+                  id="admin-tabpanel-export"
+                  aria-labelledby="admin-tab-export"
+                  className="space-y-6"
+                >
                   <div>
                     <h4 className="text-sm font-semibold text-stone-900 dark:text-stone-100">
                       {t.tabExport}
@@ -1467,23 +1564,26 @@ export const AdminModal: React.FC<AdminModalProps> = ({
 
                       <div className="flex flex-wrap items-center gap-2 pt-2">
                         <button
+                          type="button"
                           onClick={handleExportYaml}
-                          className="px-3 py-1.5 bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 text-xs font-medium rounded hover:opacity-90 transition-opacity flex items-center gap-1.5 cursor-pointer"
+                          className="px-3 py-1.5 bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 text-xs font-medium rounded hover:opacity-90 transition-opacity flex items-center gap-1.5 cursor-pointer focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300 focus-visible:outline-none"
                         >
-                          <FileDown className="w-3.5 h-3.5" />
-                          <span>Export YAML</span>
+                          <FileDown className="w-3.5 h-3.5" aria-hidden="true" />
+                          <span>{t.exportYamlButton}</span>
                         </button>
 
                         <button
+                          type="button"
                           onClick={() => yamlInputRef.current?.click()}
-                          className="px-3 py-1.5 bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 text-stone-800 dark:text-stone-200 text-xs font-medium rounded hover:bg-stone-50 transition-colors cursor-pointer"
+                          className="px-3 py-1.5 bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 text-stone-800 dark:text-stone-200 text-xs font-medium rounded hover:bg-stone-50 transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300 focus-visible:outline-none"
                         >
-                          Import YAML
+                          {t.importYamlButton}
                         </button>
                         <input
                           ref={yamlInputRef}
                           type="file"
                           accept=".yaml,.yml"
+                          aria-label="Upload YAML configuration file"
                           onChange={handleImportYaml}
                           className="hidden"
                         />
@@ -1500,13 +1600,62 @@ export const AdminModal: React.FC<AdminModalProps> = ({
 
                       <div className="pt-2">
                         <button
+                          type="button"
                           onClick={handleExportSingleHtml}
-                          className="px-3.5 py-1.5 bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 text-xs font-medium rounded hover:opacity-90 transition-opacity flex items-center gap-1.5 cursor-pointer"
+                          className="px-3.5 py-1.5 bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 text-xs font-medium rounded hover:opacity-90 transition-opacity flex items-center gap-1.5 cursor-pointer focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300 focus-visible:outline-none"
                         >
-                          <FileDown className="w-3.5 h-3.5" />
-                          <span>Generate Single HTML</span>
+                          <FileDown className="w-3.5 h-3.5" aria-hidden="true" />
+                          <span>{t.generateSingleHtml}</span>
                         </button>
                       </div>
+                    </div>
+                  </div>
+
+                  {/* Media RSS Feed & Widget Settings */}
+                  <div className="p-4 bg-stone-50 dark:bg-stone-800/40 border border-stone-200 dark:border-stone-800 rounded-lg space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <div className="p-1.5 bg-amber-500 text-white rounded">
+                          <Rss className="w-3.5 h-3.5" aria-hidden="true" />
+                        </div>
+                        <div>
+                          <div className="text-xs font-semibold text-stone-900 dark:text-stone-100">
+                            {t.rssWidgetTitle} Feed &middot; <code className="font-mono text-[11px] text-amber-700 dark:text-amber-400">recently_added.rss</code>
+                          </div>
+                          <div className="text-[11px] text-stone-500">
+                            Standards-compliant RSS 2.0 with Media RSS (mrss) tags and embedded thumbnails for the latest 10 additions.
+                          </div>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => downloadRssFeed(items, folders, config)}
+                        className="px-3 py-1.5 bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 text-xs font-medium rounded hover:opacity-90 transition-opacity flex items-center gap-1.5 cursor-pointer shrink-0 focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300 focus-visible:outline-none"
+                      >
+                        <FileDown className="w-3.5 h-3.5" aria-hidden="true" />
+                        <span>{t.downloadRssFeed}</span>
+                      </button>
+                    </div>
+
+                    <div className="pt-2 border-t border-stone-200 dark:border-stone-700/80">
+                      <label htmlFor="rss-widget-admin-toggle" className="flex items-start gap-2.5 text-stone-700 dark:text-stone-300 cursor-pointer">
+                        <input
+                          id="rss-widget-admin-toggle"
+                          type="checkbox"
+                          checked={config.showRssWidget !== false}
+                          onChange={(e) => onUpdateConfig({ ...config, showRssWidget: e.target.checked })}
+                          className="rounded mt-0.5 focus-visible:ring-2 focus-visible:ring-stone-600"
+                        />
+                        <div>
+                          <span className="text-xs font-medium text-stone-900 dark:text-stone-100 block">
+                            {t.rssWidgetToggleAdmin}
+                          </span>
+                          <span className="text-[11px] text-stone-500 block">
+                            Enables the interactive carousel widget showcasing the latest 10 additions above the catalog filter bar.
+                          </span>
+                        </div>
+                      </label>
                     </div>
                   </div>
 
@@ -1517,20 +1666,21 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                           {t.phpGuideTitle}
                         </div>
                         <div className="text-[11px] text-stone-500 mt-0.5">
-                          Supported Versions: <strong className="text-stone-700 dark:text-stone-300">PHP 8.1, PHP 8.2, and PHP 8.3+</strong> (Multi-format directory scanner)
+                          {t.supportedPhpVersions}
                         </div>
                       </div>
 
                       <button
+                        type="button"
                         onClick={copyPhpScript}
-                        className="px-2.5 py-1 text-xs border border-stone-300 dark:border-stone-700 rounded bg-white dark:bg-stone-800 hover:bg-stone-100 transition-colors flex items-center gap-1 cursor-pointer"
+                        className="px-2.5 py-1 text-xs border border-stone-300 dark:border-stone-700 rounded bg-white dark:bg-stone-800 hover:bg-stone-100 transition-colors flex items-center gap-1 cursor-pointer focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300 focus-visible:outline-none"
                       >
-                        <Copy className="w-3 h-3" />
-                        <span>{copiedPhp ? 'Copied!' : 'Copy Script'}</span>
+                        <Copy className="w-3 h-3" aria-hidden="true" />
+                        <span>{copiedPhp ? t.scriptCopied : t.copyScript}</span>
                       </button>
                     </div>
 
-                    <pre className="p-3 bg-stone-950 rounded border border-stone-800 text-[11px] font-mono text-stone-300 overflow-x-auto max-h-40 whitespace-pre">
+                    <pre className="p-3 bg-stone-950 rounded border border-stone-800 text-[11px] font-mono text-stone-300 overflow-x-auto max-h-40 whitespace-pre" tabIndex={0} aria-label="PHP scanner guide code block">
                       {PHP_SCANNER_GUIDE}
                     </pre>
                   </div>
@@ -1546,14 +1696,15 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                     </div>
 
                     <button
+                      type="button"
                       onClick={() => {
                         if (window.confirm(t.confirmReset)) {
                           onResetCatalog();
                         }
                       }}
-                      className="px-3 py-1.5 text-xs text-red-600 hover:text-red-700 dark:text-red-400 border border-red-200 dark:border-red-900 rounded bg-red-50 dark:bg-red-950/20 hover:bg-red-100 transition-colors cursor-pointer flex items-center gap-1.5"
+                      className="px-3 py-1.5 text-xs text-red-600 hover:text-red-700 dark:text-red-400 border border-red-200 dark:border-red-900 rounded bg-red-50 dark:bg-red-950/20 hover:bg-red-100 transition-colors cursor-pointer flex items-center gap-1.5 focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:outline-none"
                     >
-                      <RefreshCw className="w-3.5 h-3.5" />
+                      <RefreshCw className="w-3.5 h-3.5" aria-hidden="true" />
                       <span>{t.resetDemoData}</span>
                     </button>
                   </div>

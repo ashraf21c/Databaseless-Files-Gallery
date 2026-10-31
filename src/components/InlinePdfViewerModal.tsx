@@ -99,7 +99,12 @@ export const InlinePdfViewerModal: React.FC<InlinePdfViewerModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-stone-950/80 backdrop-blur-sm animate-in fade-in duration-200">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="inline-viewer-title"
+      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-stone-950/80 backdrop-blur-sm animate-in fade-in duration-200"
+    >
       
       {/* Modal Dialog Card */}
       <div className="relative w-full h-[94vh] max-w-6xl bg-stone-900 border border-stone-800 rounded-xl shadow-2xl flex flex-col overflow-hidden text-stone-100">
@@ -113,25 +118,27 @@ export const InlinePdfViewerModal: React.FC<InlinePdfViewerModalProps> = ({
               <button
                 onClick={onNavigatePrev}
                 disabled={!hasPrev}
-                className="p-1.5 text-stone-400 hover:text-white disabled:opacity-30 disabled:pointer-events-none rounded transition-colors cursor-pointer"
+                className="p-1.5 text-stone-400 hover:text-white disabled:opacity-30 disabled:pointer-events-none rounded transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:outline-none"
                 title={t.previousDoc}
+                aria-label={t.previousDoc}
               >
-                <ChevronLeft className="w-4 h-4 rtl:rotate-180" />
+                <ChevronLeft className="w-4 h-4 rtl:rotate-180" aria-hidden="true" />
               </button>
               <button
                 onClick={onNavigateNext}
                 disabled={!hasNext}
-                className="p-1.5 text-stone-400 hover:text-white disabled:opacity-30 disabled:pointer-events-none rounded transition-colors cursor-pointer"
+                className="p-1.5 text-stone-400 hover:text-white disabled:opacity-30 disabled:pointer-events-none rounded transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:outline-none"
                 title={t.nextDoc}
+                aria-label={t.nextDoc}
               >
-                <ChevronRight className="w-4 h-4 rtl:rotate-180" />
+                <ChevronRight className="w-4 h-4 rtl:rotate-180" aria-hidden="true" />
               </button>
             </div>
 
             <div className="min-w-0 ms-1">
-              <div className="text-xs font-serif font-medium text-stone-200 truncate max-w-xs sm:max-w-md md:max-w-lg">
+              <h2 id="inline-viewer-title" className="text-xs font-serif font-medium text-stone-200 truncate max-w-xs sm:max-w-md md:max-w-lg">
                 {item.exif.title || item.name}
-              </div>
+              </h2>
               <div className="text-[11px] text-stone-500 truncate flex items-center gap-2">
                 <span className="uppercase font-mono text-[10px] text-amber-500/90">{item.fileType}</span>
                 <span>·</span>
@@ -150,26 +157,29 @@ export const InlinePdfViewerModal: React.FC<InlinePdfViewerModalProps> = ({
               <div className="hidden sm:flex items-center gap-1 bg-stone-900 border border-stone-800 rounded px-1.5 py-1">
                 <button
                   onClick={() => setZoom(z => Math.max(50, z - 15))}
-                  className="p-1 text-stone-400 hover:text-stone-200 cursor-pointer"
+                  className="p-1 text-stone-400 hover:text-stone-200 cursor-pointer focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:outline-none rounded"
                   title={t.zoomOut}
+                  aria-label={t.zoomOut}
                 >
-                  <ZoomOut className="w-3.5 h-3.5" />
+                  <ZoomOut className="w-3.5 h-3.5" aria-hidden="true" />
                 </button>
-                <span className="text-[11px] font-mono px-1 tabular-nums text-stone-300">{zoom}%</span>
+                <span className="text-[11px] font-mono px-1 tabular-nums text-stone-300" aria-live="polite">{zoom}%</span>
                 <button
                   onClick={() => setZoom(z => Math.min(200, z + 15))}
-                  className="p-1 text-stone-400 hover:text-stone-200 cursor-pointer"
+                  className="p-1 text-stone-400 hover:text-stone-200 cursor-pointer focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:outline-none rounded"
                   title={t.zoomIn}
+                  aria-label={t.zoomIn}
                 >
-                  <ZoomIn className="w-3.5 h-3.5" />
+                  <ZoomIn className="w-3.5 h-3.5" aria-hidden="true" />
                 </button>
-                <div className="w-[1px] h-3 bg-stone-700 mx-1" />
+                <div className="w-[1px] h-3 bg-stone-700 mx-1" aria-hidden="true" />
                 <button
                   onClick={() => setRotation(r => (r + 90) % 360)}
-                  className="p-1 text-stone-400 hover:text-stone-200 cursor-pointer"
+                  className="p-1 text-stone-400 hover:text-stone-200 cursor-pointer focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:outline-none rounded"
                   title={t.rotate}
+                  aria-label={t.rotate}
                 >
-                  <RotateCw className="w-3.5 h-3.5" />
+                  <RotateCw className="w-3.5 h-3.5" aria-hidden="true" />
                 </button>
               </div>
             )}
@@ -177,24 +187,27 @@ export const InlinePdfViewerModal: React.FC<InlinePdfViewerModalProps> = ({
             {/* Toggle Metadata Inspector */}
             <button
               onClick={() => setShowMetadataPanel(!showMetadataPanel)}
-              className={`p-2 rounded text-xs flex items-center gap-1.5 transition-colors cursor-pointer ${
+              className={`p-2 rounded text-xs flex items-center gap-1.5 transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:outline-none ${
                 showMetadataPanel
                   ? 'bg-stone-800 text-stone-100'
                   : 'text-stone-400 hover:text-stone-200 hover:bg-stone-900'
               }`}
               title={t.exifInspector}
+              aria-label={t.exifInspector}
+              aria-expanded={showMetadataPanel}
             >
-              <Info className="w-4 h-4" />
+              <Info className="w-4 h-4" aria-hidden="true" />
               <span className="hidden md:inline text-xs">EXIF</span>
             </button>
 
             {/* Open in New Window/Tab */}
             <button
               onClick={() => onOpenNewTab(item)}
-              className="p-2 text-stone-400 hover:text-white hover:bg-stone-900 rounded transition-colors cursor-pointer"
+              className="p-2 text-stone-400 hover:text-white hover:bg-stone-900 rounded transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:outline-none"
               title={t.openNewTab}
+              aria-label={t.openNewTab}
             >
-              <ExternalLink className="w-4 h-4" />
+              <ExternalLink className="w-4 h-4" aria-hidden="true" />
             </button>
 
             {/* Downloads Toolbar */}
@@ -204,12 +217,13 @@ export const InlinePdfViewerModal: React.FC<InlinePdfViewerModalProps> = ({
                 {/* 1. Main File Download (Video, Word, Image, PDF) */}
                 <button
                   onClick={() => onDownload(item)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-stone-100 hover:bg-white text-stone-900 rounded transition-colors cursor-pointer"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-stone-100 hover:bg-white text-stone-900 rounded transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:outline-none"
                   title={isVideo ? t.downloadVideo : t.downloadFile}
+                  aria-label={isVideo ? t.downloadVideo : isWord ? t.downloadWord : isImage ? t.downloadImage : t.downloadPdf}
                 >
-                  <Download className="w-3.5 h-3.5" />
+                  <Download className="w-3.5 h-3.5" aria-hidden="true" />
                   <span className="hidden sm:inline">
-                    {isVideo ? t.downloadVideo : isWord ? 'Download Word' : isImage ? 'Download Image' : t.downloadPdf}
+                    {isVideo ? t.downloadVideo : isWord ? t.downloadWord : isImage ? t.downloadImage : t.downloadPdf}
                   </span>
                 </button>
 
@@ -217,10 +231,11 @@ export const InlinePdfViewerModal: React.FC<InlinePdfViewerModalProps> = ({
                 {isVideo && item.powerpointUrl && isPptDownloadAllowed && onDownloadPowerpoint && (
                   <button
                     onClick={() => onDownloadPowerpoint(item)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-amber-500 hover:bg-amber-400 text-stone-950 rounded transition-colors cursor-pointer shadow-xs"
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-amber-500 hover:bg-amber-400 text-stone-950 rounded transition-colors cursor-pointer shadow-xs focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none"
                     title={t.downloadPowerpoint}
+                    aria-label={`${t.downloadPowerpoint}: ${item.powerpointFileName}`}
                   >
-                    <Presentation className="w-3.5 h-3.5" />
+                    <Presentation className="w-3.5 h-3.5" aria-hidden="true" />
                     <span>{t.downloadPowerpoint}</span>
                   </button>
                 )}
@@ -230,8 +245,9 @@ export const InlinePdfViewerModal: React.FC<InlinePdfViewerModalProps> = ({
               <div
                 className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-stone-400 bg-stone-900 border border-stone-800 rounded select-none"
                 title={t.downloadDisabledTip}
+                aria-label={t.downloadDisabledTip}
               >
-                <Lock className="w-3.5 h-3.5 text-amber-500/80" />
+                <Lock className="w-3.5 h-3.5 text-amber-500/80" aria-hidden="true" />
                 <span className="text-[11px] hidden sm:inline">{t.downloadDisabled}</span>
               </div>
             )}
@@ -239,10 +255,10 @@ export const InlinePdfViewerModal: React.FC<InlinePdfViewerModalProps> = ({
             {/* Close Modal Button */}
             <button
               onClick={onClose}
-              className="p-2 text-stone-400 hover:text-white hover:bg-stone-800 rounded transition-colors cursor-pointer ml-1"
-              aria-label={t.close}
+              className="p-2 text-stone-400 hover:text-white hover:bg-stone-800 rounded transition-colors cursor-pointer ml-1 focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:outline-none"
+              aria-label={t.closeDialog}
             >
-              <X className="w-4 h-4" />
+              <X className="w-4 h-4" aria-hidden="true" />
             </button>
           </div>
 
@@ -261,6 +277,7 @@ export const InlinePdfViewerModal: React.FC<InlinePdfViewerModalProps> = ({
                     src={item.url}
                     controls
                     playsInline
+                    aria-label={item.exif.title || item.name}
                     className="w-full h-full object-contain"
                   >
                     Your browser does not support HTML5 video playback.
@@ -272,7 +289,7 @@ export const InlinePdfViewerModal: React.FC<InlinePdfViewerModalProps> = ({
                   <div className="w-full mt-4 p-4 bg-stone-900/90 border border-amber-900/40 rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
                     <div className="flex items-center gap-3">
                       <div className="p-2 bg-amber-500/10 text-amber-400 rounded-md">
-                        <Presentation className="w-5 h-5" />
+                        <Presentation className="w-5 h-5" aria-hidden="true" />
                       </div>
                       <div>
                         <div className="font-semibold text-stone-200">
@@ -287,9 +304,10 @@ export const InlinePdfViewerModal: React.FC<InlinePdfViewerModalProps> = ({
                     {isPptDownloadAllowed && onDownloadPowerpoint && (
                       <button
                         onClick={() => onDownloadPowerpoint(item)}
-                        className="px-3 py-2 bg-amber-500 hover:bg-amber-400 text-stone-950 font-semibold rounded text-xs flex items-center gap-1.5 transition-colors shrink-0"
+                        aria-label={`${t.downloadPowerpoint}: ${item.powerpointFileName}`}
+                        className="px-3 py-2 bg-amber-500 hover:bg-amber-400 text-stone-950 font-semibold rounded text-xs flex items-center gap-1.5 transition-colors shrink-0 focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none"
                       >
-                        <Download className="w-3.5 h-3.5" />
+                        <Download className="w-3.5 h-3.5" aria-hidden="true" />
                         <span>{t.downloadPowerpoint}</span>
                       </button>
                     )}
@@ -326,10 +344,10 @@ export const InlinePdfViewerModal: React.FC<InlinePdfViewerModalProps> = ({
                   {isDownloadAllowed && (
                     <button
                       onClick={() => onDownload(item)}
-                      className="px-4 py-2 bg-stone-100 text-stone-900 rounded font-semibold hover:bg-white transition-colors flex items-center gap-1.5"
+                      className="px-4 py-2 bg-stone-100 text-stone-900 rounded font-semibold hover:bg-white transition-colors flex items-center gap-1.5 cursor-pointer"
                     >
                       <Download className="w-3.5 h-3.5" />
-                      <span>Download Document</span>
+                      <span>{t.downloadWord}</span>
                     </button>
                   )}
                 </div>
@@ -374,7 +392,7 @@ export const InlinePdfViewerModal: React.FC<InlinePdfViewerModalProps> = ({
                       className="px-4 py-2 bg-amber-500 text-stone-950 font-semibold rounded hover:bg-amber-400 transition-colors flex items-center gap-1.5 cursor-pointer"
                     >
                       <Download className="w-3.5 h-3.5" />
-                      <span>Download Slide Deck ({item.originalFileName.split('.').pop()?.toUpperCase()})</span>
+                      <span>{t.downloadPresentation} ({item.originalFileName.split('.').pop()?.toUpperCase()})</span>
                     </button>
                   )}
                 </div>
@@ -453,20 +471,25 @@ export const InlinePdfViewerModal: React.FC<InlinePdfViewerModalProps> = ({
 
           {/* Collapsible Metadata / EXIF Inspector Drawer */}
           {showMetadataPanel && (
-            <aside className="w-80 sm:w-96 bg-stone-900 border-s border-stone-800 p-5 overflow-y-auto space-y-6 shrink-0 animate-in slide-in-from-right duration-200">
+            <aside
+              role="complementary"
+              aria-label={t.exifInspector}
+              className="w-80 sm:w-96 bg-stone-900 border-s border-stone-800 p-5 overflow-y-auto space-y-6 shrink-0 animate-in slide-in-from-right duration-200"
+            >
               
               <div className="flex items-center justify-between pb-3 border-b border-stone-800">
                 <div className="flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-stone-400" />
+                  <FileText className="w-4 h-4 text-stone-400" aria-hidden="true" />
                   <span className="text-xs font-semibold uppercase tracking-wider text-stone-300">
                     {t.exifInspector}
                   </span>
                 </div>
                 <button
                   onClick={() => setShowMetadataPanel(false)}
-                  className="text-stone-500 hover:text-stone-300"
+                  className="text-stone-500 hover:text-stone-300 p-1 rounded focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:outline-none"
+                  aria-label={t.closeDialog}
                 >
-                  <X className="w-3.5 h-3.5" />
+                  <X className="w-3.5 h-3.5" aria-hidden="true" />
                 </button>
               </div>
 
@@ -521,7 +544,7 @@ export const InlinePdfViewerModal: React.FC<InlinePdfViewerModalProps> = ({
 
                   {isImage && item.exif.cameraModel && (
                     <div className="pt-2 flex justify-between">
-                      <dt className="text-[11px] text-stone-400">Camera / Sensor</dt>
+                      <dt className="text-[11px] text-stone-400">{t.fieldProducer}</dt>
                       <dd className="text-stone-200">{item.exif.cameraModel}</dd>
                     </div>
                   )}
@@ -565,7 +588,7 @@ export const InlinePdfViewerModal: React.FC<InlinePdfViewerModalProps> = ({
                       title={t.copyMetadata}
                     >
                       {copiedRaw ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-                      <span>{copiedRaw ? t.copied : 'Copy'}</span>
+                      <span>{copiedRaw ? t.copied : t.copyMetadata}</span>
                     </button>
                   </div>
 

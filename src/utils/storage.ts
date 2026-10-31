@@ -174,6 +174,7 @@ export function generateSingleHtmlBundle(folders: PdfFolder[], items: MediaItem[
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Optional additional site stylesheet import -->
   <!-- <link rel="stylesheet" href="/site-theme.css"> -->
+  <link rel="alternate" type="application/rss+xml" title="${config.galleryTitle} - Recently Added" href="recently_added.rss">
   <style>
     :root {
       --font-serif: 'Playfair Display', Georgia, serif;
@@ -191,7 +192,10 @@ export function generateSingleHtmlBundle(folders: PdfFolder[], items: MediaItem[
       <p class="text-xs text-stone-500">${config.gallerySubtitle}</p>
     </div>
     <div class="flex items-center gap-3">
-      <span class="text-xs bg-stone-100 text-stone-700 px-2.5 py-1 rounded">Multi-Format Bundle</span>
+      <button onclick="downloadStandaloneRss()" class="text-xs bg-amber-50 text-amber-900 border border-amber-200 px-3 py-1.5 rounded font-medium hover:bg-amber-100 flex items-center gap-1.5">
+        <span>RSS Feed (recently_added.rss)</span>
+      </button>
+      <span class="text-xs bg-stone-100 text-stone-700 px-2.5 py-1.5 rounded font-mono">Multi-Format Bundle</span>
     </div>
   </header>
   <main class="max-w-7xl mx-auto px-6 py-8">
@@ -201,8 +205,29 @@ export function generateSingleHtmlBundle(folders: PdfFolder[], items: MediaItem[
     const CATALOG = ${jsonCatalog};
     const container = document.getElementById('gallery-container');
     
-    CATALOG.items.forEach(doc => {
-      const folder = CATALOG.folders.find(f => f.id === doc.folderId);
+    function downloadStandaloneRss() {
+      const latest = CATALOG.items.slice().sort(function(a, b) {
+        return new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime();
+      }).slice(0, 10);
+      
+      let itemsXml = '';
+      latest.forEach(function(item) {
+        const title = (item.exif && item.exif.title) ? item.exif.title : item.name;
+        const thumb = item.thumbnailUrl ? '<media:thumbnail url="' + item.thumbnailUrl + '" />' : '';
+        itemsXml += '<item><title>' + title + '</title><link>' + (item.url || '#') + '</link><pubDate>' + new Date(item.uploadDate).toUTCString() + '</pubDate><enclosure url="' + (item.url || '#') + '" length="' + item.fileSize + '" type="application/octet-stream" /><media:content url="' + (item.url || '#') + '" fileSize="' + item.fileSize + '" medium="' + (item.fileType === 'video' ? 'video' : 'document') + '" />' + thumb + '</item>';
+      });
+      
+      const rss = '<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>' + ${JSON.stringify(config.galleryTitle)} + ' - Recently Added</title><description>' + ${JSON.stringify(config.gallerySubtitle)} + '</description><atom:link href="recently_added.rss" rel="self" type="application/rss+xml" />' + itemsXml + '</channel></rss>';
+      
+      const blob = new Blob([rss], { type: 'application/rss+xml;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'recently_added.rss';
+      a.click();
+    }
+
+    CATALOG.items.forEach(function(doc) {
+      const folder = CATALOG.folders.find(function(f) { return f.id === doc.folderId; });
       const isVideo = doc.fileType === 'video';
       const card = document.createElement('article');
       card.className = "bg-white border border-stone-200 rounded-lg overflow-hidden shadow-sm hover:shadow transition-shadow flex flex-col";
@@ -212,24 +237,22 @@ export function generateSingleHtmlBundle(folders: PdfFolder[], items: MediaItem[
         extraActions = '<div class="mt-2 text-[11px] text-stone-500">Includes original slide deck: <strong>' + doc.powerpointFileName + '</strong></div>';
       }
 
-      card.innerHTML = \`
-        <div class="h-48 bg-stone-100 flex items-center justify-center p-4 border-b border-stone-100 relative">
-          <img src="\${doc.thumbnailUrl || ''}" alt="\${doc.name}" class="max-h-full max-w-full object-contain shadow-sm" onerror="this.style.display='none'">
-          <span class="absolute top-2 end-2 bg-stone-900 text-white text-[10px] uppercase font-semibold px-2 py-0.5 rounded">\${doc.fileType.toUpperCase()}</span>
-        </div>
-        <div class="p-5 flex-1 flex flex-col justify-between">
-          <div>
-            <div class="text-xs text-stone-500 mb-1 font-medium">\${folder ? folder.name : 'Archive'}</div>
-            <h2 class="text-base font-semibold text-stone-900 mb-2 leading-snug">\${doc.exif?.title || doc.name}</h2>
-            <p class="text-xs text-stone-600 line-clamp-2 mb-3">\${doc.summary || ''}</p>
-            \${extraActions}
-          </div>
-          <div class="mt-4 pt-3 border-t border-stone-100 flex items-center justify-between text-xs">
-            <span class="text-stone-500 font-mono">\${(doc.fileSize / 1024 / 1024).toFixed(1)} MB</span>
-            <span class="text-stone-700 font-medium">\${doc.exif?.author || 'Archival Record'}</span>
-          </div>
-        </div>
-      \`;
+      card.innerHTML = '<div class="h-48 bg-stone-100 flex items-center justify-center p-4 border-b border-stone-100 relative">' +
+        '<img src="' + (doc.thumbnailUrl || '') + '" alt="' + doc.name + '" class="max-h-full max-w-full object-contain shadow-sm" onerror="this.style.display=\\'none\\'">' +
+        '<span class="absolute top-2 end-2 bg-stone-900 text-white text-[10px] uppercase font-semibold px-2 py-0.5 rounded">' + doc.fileType.toUpperCase() + '</span>' +
+        '</div>' +
+        '<div class="p-5 flex-1 flex flex-col justify-between">' +
+        '<div>' +
+        '<div class="text-xs text-stone-500 mb-1 font-medium">' + (folder ? folder.name : 'Archive') + '</div>' +
+        '<h2 class="text-base font-semibold text-stone-900 mb-2 leading-snug">' + ((doc.exif && doc.exif.title) ? doc.exif.title : doc.name) + '</h2>' +
+        '<p class="text-xs text-stone-600 line-clamp-2 mb-3">' + (doc.summary || '') + '</p>' +
+        extraActions +
+        '</div>' +
+        '<div class="mt-4 pt-3 border-t border-stone-100 flex items-center justify-between text-xs">' +
+        '<span class="text-stone-500 font-mono">' + (doc.fileSize / 1024 / 1024).toFixed(1) + ' MB</span>' +
+        '<span class="text-stone-700 font-medium">' + ((doc.exif && doc.exif.author) ? doc.exif.author : 'Archival Record') + '</span>' +
+        '</div>' +
+        '</div>';
       container.appendChild(card);
     });
   </script>
@@ -241,14 +264,15 @@ export function generateSingleHtmlBundle(folders: PdfFolder[], items: MediaItem[
  * Standard PHP 8.1+ / 8.2+ / 8.3+ directory scanner code for users deploying on LAMP/Nginx servers without SQL.
  * Now enhanced with:
  * - Extensions: pdf, mp4, webm, mov, docx, doc, odt, pptx, ppt, odp, jpg, jpeg, png, webp, gif
+ * - Media RSS 2.0 Feed Generator: serves "recently_added.rss" for the 10 latest additions with media & thumbnails!
  * - Unbounded video duration (decided by PHP max upload limits: upload_max_filesize, post_max_size)
  * - Automatic pairing of .pptx, .ppt, or .odp slide decks with video files!
  */
 export const PHP_SCANNER_GUIDE = `<?php
 /**
- * FolioVault v2.1 Databaseless Directory Scanner for PHP
+ * FolioVault v2.1 Databaseless Directory Scanner & Media RSS Engine for PHP
  * Compatible with: PHP 8.1, PHP 8.2, PHP 8.3+
- * Zero Database. Flat file directory scanner with dual download support.
+ * Zero Database. Flat file directory scanner with dual download & Media RSS support.
  *
  * SERVER CONFIGURATION (php.ini or .htaccess or .user.ini)
  * Videos have no duration limits; upload size is determined by PHP settings:
@@ -259,15 +283,13 @@ export const PHP_SCANNER_GUIDE = `<?php
  *   max_input_time = 600
  */
 
-header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: *');
-
 $documentsDir = __DIR__ . '/documents';
 if (!is_dir($documentsDir)) {
     mkdir($documentsDir, 0755, true);
 }
 
 $albums = [];
+$allMediaFlat = [];
 $folders = array_diff(scandir($documentsDir), ['.', '..']);
 
 foreach ($folders as $folder) {
@@ -296,6 +318,7 @@ foreach ($folders as $folder) {
                 'extension' => $ext,
                 'size' => filesize($file),
                 'modified' => date('c', filemtime($file)),
+                'folder' => $folder,
                 'url' => 'documents/' . rawurlencode($folder) . '/' . rawurlencode($baseName)
             ];
 
@@ -315,6 +338,7 @@ foreach ($folders as $folder) {
             }
 
             $media[] = $item;
+            $allMediaFlat[] = $item;
         }
 
         $albums[] = [
@@ -325,5 +349,61 @@ foreach ($folders as $folder) {
     }
 }
 
+// FEATURE: Serve recently_added.rss (Media RSS 2.0 with thumbnails & 10 latest additions)
+$requestUri = basename($_SERVER['REQUEST_URI'] ?? '');
+if (isset($_GET['rss']) || $requestUri === 'recently_added.rss') {
+    header('Content-Type: application/rss+xml; charset=utf-8');
+    header('Access-Control-Allow-Origin: *');
+
+    usort($allMediaFlat, fn($a, $b) => strcmp($b['modified'], $a['modified']));
+    $latestTen = array_slice($allMediaFlat, 0, 10);
+    $host = 'http://' . ($_SERVER['HTTP_HOST'] ?? 'localhost');
+
+    echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
+    echo '<rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/" xmlns:atom="http://www.w3.org/2005/Atom">' . "\n";
+    echo '  <channel>' . "\n";
+    echo '    <title>FolioVault - Recently Added</title>' . "\n";
+    echo '    <link>' . $host . '</link>' . "\n";
+    echo '    <description>Latest 10 additions to the repository with Media RSS</description>' . "\n";
+    echo '    <lastBuildDate>' . date(DATE_RSS) . '</lastBuildDate>' . "\n";
+    echo '    <atom:link href="' . $host . '/recently_added.rss" rel="self" type="application/rss+xml" />' . "\n";
+
+    foreach ($latestTen as $item) {
+        $pubDate = date(DATE_RSS, strtotime($item['modified']));
+        $mime = match($item['fileType']) {
+            'video' => 'video/mp4',
+            'image' => 'image/jpeg',
+            'presentation' => 'application/vnd.ms-powerpoint',
+            'word' => 'application/msword',
+            default => 'application/pdf',
+        };
+        $medium = match($item['fileType']) {
+            'video' => 'video',
+            'image' => 'image',
+            default => 'document',
+        };
+        $itemLink = $host . '/' . $item['url'];
+
+        echo "    <item>\n";
+        echo '      <title>' . htmlspecialchars($item['name']) . "</title>\n";
+        echo '      <link>' . htmlspecialchars($itemLink) . "</link>\n";
+        echo '      <guid isPermaLink="false">' . md5($item['url']) . "</guid>\n";
+        echo '      <pubDate>' . $pubDate . "</pubDate>\n";
+        echo '      <category>' . htmlspecialchars($item['folder']) . "</category>\n";
+        echo '      <enclosure url="' . htmlspecialchars($itemLink) . '" length="' . $item['size'] . '" type="' . $mime . "\" />\n";
+        echo '      <media:content url="' . htmlspecialchars($itemLink) . '" fileSize="' . $item['size'] . '" type="' . $mime . '" medium="' . $medium . "\" />\n";
+        if (!empty($item['powerpointFileName'])) {
+            echo '      <media:peer url="' . htmlspecialchars($host . '/' . $item['powerpointUrl']) . '" type="application/vnd.ms-powerpoint" role="companion" />' . "\n";
+        }
+        echo "    </item>\n";
+    }
+
+    echo "  </channel>\n";
+    echo "</rss>\n";
+    exit;
+}
+
+header('Content-Type: application/json; charset=utf-8');
+header('Access-Control-Allow-Origin: *');
 echo json_encode(['status' => 'success', 'albums' => $albums], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
 `;

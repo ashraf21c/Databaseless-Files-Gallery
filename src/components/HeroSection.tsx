@@ -34,9 +34,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
             <div className="text-xs uppercase tracking-widest text-stone-500 dark:text-stone-400 font-medium">
               <span>VOL. XXVI</span>
               <span className="mx-2">·</span>
-              <span>CENTRAL ARCHIVE</span>
-              <span className="mx-2">·</span>
-              <span>DATABASELESS SPECIFICATION</span>
+              <span>{t.heroVolBadge}</span>
             </div>
 
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-serif font-medium text-stone-900 dark:text-stone-50 leading-[1.15] text-balance">
@@ -44,7 +42,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
             </h1>
 
             <p className="text-base text-stone-600 dark:text-stone-300 max-w-2xl leading-relaxed">
-              Curated central gallery for PDF documents, folios, architectural monographs, and exhibition catalogs. Built entirely without databases: utilizing portable flat schemas, cryptographic SHA-256 admin governance, and full EXIF metadata retention.
+              {t.heroDescription}
             </p>
 
             {/* Quick Actions */}
@@ -74,7 +72,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
               />
               <div className="absolute inset-0 bg-gradient-to-t from-stone-950/70 via-transparent to-transparent flex items-end p-4">
                 <p className="text-xs text-stone-200 font-serif italic">
-                  Fig. 1 — Archival examination folio with preserved vector plates and metadata records.
+                  {t.heroFigCaption}
                 </p>
               </div>
             </div>
@@ -87,29 +85,29 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
           <div className="flex items-center gap-2.5">
             <Database className="w-4 h-4 text-stone-500 shrink-0" />
             <div>
-              <span className="font-semibold block text-stone-800 dark:text-stone-200">Databaseless Core</span>
-              <span className="text-[11px] text-stone-500">YAML / Flat-file storage</span>
+              <span className="font-semibold block text-stone-800 dark:text-stone-200">{t.coreDatabaselessTitle}</span>
+              <span className="text-[11px] text-stone-500">{t.coreDatabaselessSubtitle}</span>
             </div>
           </div>
           <div className="flex items-center gap-2.5">
             <ShieldCheck className="w-4 h-4 text-stone-500 shrink-0" />
             <div>
-              <span className="font-semibold block text-stone-800 dark:text-stone-200">Encrypted Pass</span>
-              <span className="text-[11px] text-stone-500">Salted SHA-256 Web Crypto</span>
+              <span className="font-semibold block text-stone-800 dark:text-stone-200">{t.coreCryptoTitle}</span>
+              <span className="text-[11px] text-stone-500">{t.coreCryptoSubtitle}</span>
             </div>
           </div>
           <div className="flex items-center gap-2.5">
             <FileText className="w-4 h-4 text-stone-500 shrink-0" />
             <div>
-              <span className="font-semibold block text-stone-800 dark:text-stone-200">EXIF Governance</span>
-              <span className="text-[11px] text-stone-500">Selective front-end reveals</span>
+              <span className="font-semibold block text-stone-800 dark:text-stone-200">{t.coreExifTitle}</span>
+              <span className="text-[11px] text-stone-500">{t.coreExifSubtitle}</span>
             </div>
           </div>
           <div className="flex items-center gap-2.5">
             <Globe className="w-4 h-4 text-stone-500 shrink-0" />
             <div>
-              <span className="font-semibold block text-stone-800 dark:text-stone-200">RTL & Multilingual</span>
-              <span className="text-[11px] text-stone-500">Arabic, Japanese, English</span>
+              <span className="font-semibold block text-stone-800 dark:text-stone-200">{t.coreLangTitle}</span>
+              <span className="text-[11px] text-stone-500">{t.coreLangSubtitle}</span>
             </div>
           </div>
         </div>

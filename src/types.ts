@@ -121,4 +121,5 @@ export interface AdminConfig {
   allowGlobalDownloads: boolean;
   exifSettings: ExifDisplaySettings;
   customCssEnabled: boolean;
+  showRssWidget?: boolean;
 }

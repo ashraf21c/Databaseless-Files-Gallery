@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" 
+     xmlns:media="http://search.yahoo.com/mrss/"
+     xmlns:atom="http://www.w3.org/2005/Atom"
+     xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title>FolioVault Central Repository - Recently Added</title>
+    <link>https://foliovault.archive</link>
+    <description>Databaseless central repository for verified scholarly, institutional, and multimedia folios.</description>
+    <language>en</language>
+    <lastBuildDate>Sat, 31 Oct 2026 19:40:00 GMT</lastBuildDate>
+    <atom:link href="/recently_added.rss" rel="self" type="application/rss+xml" />
+    <generator>FolioVault Databaseless Media Engine</generator>
+
+    <item>
+      <title>Keynote: Mediterranean Masonry, Structural Vaults and Historic Quake Resilience</title>
+      <link>/documents/Architectural%20Monographs%20%26%20Keynotes/Symposium_2026_Mediterranean_Masonry_Keynote.mp4</link>
+      <guid isPermaLink="false">media-video-1</guid>
+      <pubDate>Thu, 15 Oct 2026 14:30:00 GMT</pubDate>
+      <dc:creator>Prof. Julian Sterling, D.Arch</dc:creator>
+      <category>Architectural Monographs &amp; Keynotes</category>
+      <category>Video</category>
+      <category>Keynote</category>
+      <category>Symposium</category>
+      <description><![CDATA[
+        <div style="font-family: sans-serif; line-height: 1.5; color: #292524;">
+          <p><img src="/src/assets/images/sample_document_cover_1793386275184.jpg" alt="Keynote: Mediterranean Masonry" style="max-width: 480px; max-height: 320px; object-fit: contain; border-radius: 6px; border: 1px solid #e7e5e4;" /></p>
+          <h3 style="margin-top: 8px; margin-bottom: 4px; font-size: 16px;">Keynote: Mediterranean Masonry, Structural Vaults and Historic Quake Resilience</h3>
+          <p style="margin: 0; color: #78716c; font-size: 12px;"><strong>Format:</strong> VIDEO &middot; <strong>Size:</strong> 428.5 MB &middot; <strong>Album:</strong> Architectural Monographs &amp; Keynotes</p>
+          <p style="margin: 4px 0 0 0; color: #57534e; font-size: 12px;"><strong>Creator:</strong> Prof. Julian Sterling, D.Arch</p>
+          <p style="margin: 2px 0 0 0; font-size: 12px; color: #57534e;"><strong>Duration:</strong> 01:24:18 (Full Keynote)</p>
+          <p style="margin-top: 10px; font-size: 13px; color: #44403c;">Full 84-minute symposium presentation analyzing dry-stone compression arches and seismic dampening. Dual download package available with original slide deck.</p>
+          <p style="margin-top: 8px; padding: 6px; background: #fef3c7; border-left: 3px solid #d97706; font-size: 11px;">
+            <strong>Includes Companion Slide Deck:</strong> Mediterranean_Masonry_Structural_Vaults_Slides.pptx
+          </p>
+        </div>
+      ]]></description>
+      <enclosure url="/documents/Architectural%20Monographs%20%26%20Keynotes/Symposium_2026_Mediterranean_Masonry_Keynote.mp4" length="449314816" type="video/mp4" />
+      <media:content url="/documents/Architectural%20Monographs%20%26%20Keynotes/Symposium_2026_Mediterranean_Masonry_Keynote.mp4" fileSize="449314816" type="video/mp4" medium="video">
+        <media:title type="plain">Keynote: Mediterranean Masonry, Structural Vaults and Historic Quake Resilience</media:title>
+        <media:description type="plain">Full symposium presentation analyzing dry-stone compression arches and seismic dampening.</media:description>
+        <media:duration>5058</media:duration>
+        <media:credit role="author">Prof. Julian Sterling, D.Arch</media:credit>
+        <media:category>Architectural Monographs &amp; Keynotes</media:category>
+      </media:content>
+      <media:thumbnail url="/src/assets/images/sample_document_cover_1793386275184.jpg" width="480" height="320" />
+      <media:peer url="/documents/Architectural%20Monographs%20%26%20Keynotes/Mediterranean_Masonry_Structural_Vaults_Slides.pptx" type="application/vnd.ms-powerpoint" role="companion" title="Mediterranean_Masonry_Structural_Vaults_Slides.pptx" />
+    </item>
+
+    <item>
+      <title>Monograph: Monolithic Stone Vaulting in the Levant</title>
+      <link>/documents/Architectural%20Monographs%20%26%20Keynotes/Monograph_Levant_Stone_Vaulting_1792.pdf</link>
+      <guid isPermaLink="false">media-folio-1</guid>
+      <pubDate>Sun, 20 Sep 2026 09:15:00 GMT</pubDate>
+      <dc:creator>Dr. Jean-Luc Delacroix</dc:creator>
+      <category>Architectural Monographs &amp; Keynotes</category>
+      <category>PDF</category>
+      <category>Architecture</category>
+      <category>Heritage</category>
+      <description><![CDATA[
+        <div style="font-family: sans-serif; line-height: 1.5; color: #292524;">
+          <p><img src="/src/assets/images/gallery_curatorial_hero_1793386273415.jpg" alt="Monograph: Monolithic Stone Vaulting" style="max-width: 480px; max-height: 320px; object-fit: contain; border-radius: 6px; border: 1px solid #e7e5e4;" /></p>
+          <h3 style="margin-top: 8px; margin-bottom: 4px; font-size: 16px;">Monograph: Monolithic Stone Vaulting in the Levant</h3>
+          <p style="margin: 0; color: #78716c; font-size: 12px;"><strong>Format:</strong> PDF &middot; <strong>Size:</strong> 18.4 MB &middot; <strong>Album:</strong> Architectural Monographs &amp; Keynotes</p>
+          <p style="margin: 4px 0 0 0; color: #57534e; font-size: 12px;"><strong>Creator:</strong> Dr. Jean-Luc Delacroix</p>
+          <p style="margin: 2px 0 0 0; font-size: 12px; color: #57534e;"><strong>Pages:</strong> 142</p>
+          <p style="margin-top: 10px; font-size: 13px; color: #44403c;">Definitive architectural monograph detailing compressive vaulting techniques and stone ribbing systems across Byzantine and Crusader fortifications.</p>
+        </div>
+      ]]></description>
+      <enclosure url="/documents/Architectural%20Monographs%20%26%20Keynotes/Monograph_Levant_Stone_Vaulting_1792.pdf" length="19293798" type="application/pdf" />
+      <media:content url="/documents/Architectural%20Monographs%20%26%20Keynotes/Monograph_Levant_Stone_Vaulting_1792.pdf" fileSize="19293798" type="application/pdf" medium="document">
+        <media:title type="plain">Monograph: Monolithic Stone Vaulting in the Levant</media:title>
+        <media:description type="plain">Definitive architectural monograph detailing compressive vaulting techniques and stone ribbing systems.</media:description>
+        <media:credit role="author">Dr. Jean-Luc Delacroix</media:credit>
+        <media:category>Architectural Monographs &amp; Keynotes</media:category>
+      </media:content>
+      <media:thumbnail url="/src/assets/images/gallery_curatorial_hero_1793386273415.jpg" width="480" height="320" />
+    </item>
+
+  </channel>
+</rss>

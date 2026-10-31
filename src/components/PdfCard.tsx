@@ -99,15 +99,16 @@ export const PdfCard: React.FC<PdfCardProps> = ({
         </div>
 
         {/* Hover Quick Overlay */}
-        <div className="absolute inset-0 bg-stone-950/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3 backdrop-blur-[2px]">
+        <div className="absolute inset-0 bg-stone-950/40 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity flex items-center justify-center gap-3 backdrop-blur-[2px]">
           <button
             onClick={(e) => {
               e.stopPropagation();
               onViewInline(item);
             }}
-            className="px-3 py-1.5 bg-white text-stone-900 text-xs font-semibold rounded shadow-md flex items-center gap-1.5 hover:bg-stone-100 transition-colors cursor-pointer"
+            aria-label={`${t.viewInline}: ${item.exif.title || item.name}`}
+            className="px-3 py-1.5 bg-white text-stone-900 text-xs font-semibold rounded shadow-md flex items-center gap-1.5 hover:bg-stone-100 transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:outline-none"
           >
-            <Eye className="w-3.5 h-3.5" />
+            <Eye className="w-3.5 h-3.5" aria-hidden="true" />
             <span>{t.viewInline}</span>
           </button>
           <button
@@ -115,17 +116,18 @@ export const PdfCard: React.FC<PdfCardProps> = ({
               e.stopPropagation();
               onOpenNewTab(item);
             }}
-            className="p-1.5 bg-white/90 text-stone-900 rounded shadow-md hover:bg-white transition-colors cursor-pointer"
+            className="p-1.5 bg-white/90 text-stone-900 rounded shadow-md hover:bg-white transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:outline-none"
             title={t.openNewTab}
+            aria-label={`${t.openNewTab}: ${item.exif.title || item.name}`}
           >
-            <ExternalLink className="w-3.5 h-3.5" />
+            <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
           </button>
         </div>
 
         {/* Download Restriction Indicator if disabled */}
         {!isDownloadAllowed && (
           <div className="absolute top-2.5 end-2.5 bg-stone-900/80 text-stone-200 text-[10px] px-2 py-0.5 rounded-sm flex items-center gap-1 backdrop-blur-xs">
-            <Lock className="w-2.5 h-2.5 text-stone-300" />
+            <Lock className="w-2.5 h-2.5 text-stone-300" aria-label={t.downloadDisabled} />
             <span>{t.downloadDisabled}</span>
           </div>
         )}
@@ -171,11 +173,13 @@ export const PdfCard: React.FC<PdfCardProps> = ({
           </div>
 
           {/* Title */}
-          <h2
-            onClick={() => onViewInline(item)}
-            className="text-base font-serif font-medium text-stone-900 dark:text-stone-100 leading-snug hover:text-stone-700 dark:hover:text-stone-300 transition-colors cursor-pointer"
-          >
-            {exifSettings.showTitle && item.exif.title ? item.exif.title : item.name}
+          <h2 className="text-base font-serif font-medium text-stone-900 dark:text-stone-100 leading-snug">
+            <button
+              onClick={() => onViewInline(item)}
+              className="text-start hover:text-stone-700 dark:hover:text-stone-300 transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300 focus-visible:outline-none rounded"
+            >
+              {exifSettings.showTitle && item.exif.title ? item.exif.title : item.name}
+            </button>
           </h2>
 
           {/* Author / Presenter */}
@@ -196,7 +200,7 @@ export const PdfCard: React.FC<PdfCardProps> = ({
           {isVideo && item.powerpointFileName && (
             <div className="mt-3 p-2 bg-stone-50 dark:bg-stone-800/60 rounded border border-stone-200 dark:border-stone-700/80 text-[11px] text-stone-600 dark:text-stone-300 flex items-center justify-between">
               <div className="flex items-center gap-1.5 truncate">
-                <Presentation className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                <Presentation className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" aria-hidden="true" />
                 <span className="truncate">{item.powerpointFileName}</span>
               </div>
               {isPptDownloadAllowed && onDownloadPowerpoint && (
@@ -205,8 +209,9 @@ export const PdfCard: React.FC<PdfCardProps> = ({
                     e.stopPropagation();
                     onDownloadPowerpoint(item);
                   }}
-                  className="ms-2 px-1.5 py-0.5 text-[10px] bg-white dark:bg-stone-700 border border-stone-200 dark:border-stone-600 rounded text-stone-700 dark:text-stone-200 hover:bg-stone-100 transition-colors shrink-0"
+                  className="ms-2 px-1.5 py-0.5 text-[10px] bg-white dark:bg-stone-700 border border-stone-200 dark:border-stone-600 rounded text-stone-700 dark:text-stone-200 hover:bg-stone-100 transition-colors shrink-0 focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:outline-none"
                   title={t.downloadPowerpoint}
+                  aria-label={`${t.downloadPowerpoint}: ${item.powerpointFileName}`}
                 >
                   PPTX ↓
                 </button>
@@ -251,18 +256,20 @@ export const PdfCard: React.FC<PdfCardProps> = ({
           <div className="flex items-center gap-2">
             <button
               onClick={() => onViewInline(item)}
-              className="text-xs font-medium text-stone-800 dark:text-stone-200 hover:text-stone-900 dark:hover:text-white flex items-center gap-1 cursor-pointer"
+              aria-label={`${t.viewInline}: ${item.exif.title || item.name}`}
+              className="text-xs font-medium text-stone-800 dark:text-stone-200 hover:text-stone-900 dark:hover:text-white flex items-center gap-1 cursor-pointer focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300 focus-visible:outline-none rounded"
             >
-              <Eye className="w-3.5 h-3.5" />
+              <Eye className="w-3.5 h-3.5" aria-hidden="true" />
               <span>{t.viewInline}</span>
             </button>
-            <span className="text-stone-300 dark:text-stone-700">|</span>
+            <span className="text-stone-300 dark:text-stone-700" aria-hidden="true">|</span>
             <button
               onClick={() => onOpenNewTab(item)}
-              className="text-xs text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200 flex items-center gap-1 cursor-pointer"
+              className="text-xs text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200 flex items-center gap-1 cursor-pointer focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300 focus-visible:outline-none rounded"
               title={t.openNewTab}
+              aria-label={`${t.openNewTab}: ${item.exif.title || item.name}`}
             >
-              <ExternalLink className="w-3 h-3" />
+              <ExternalLink className="w-3 h-3" aria-hidden="true" />
             </button>
           </div>
 
@@ -272,10 +279,11 @@ export const PdfCard: React.FC<PdfCardProps> = ({
               <>
                 <button
                   onClick={() => onDownload(item)}
-                  className="p-1.5 text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white hover:bg-stone-100 dark:hover:bg-stone-800 rounded transition-colors cursor-pointer flex items-center gap-1"
+                  aria-label={`${isVideo ? t.downloadVideo : isWord ? t.downloadWord : isImage ? t.downloadImage : t.downloadPdf}: ${item.originalFileName}`}
+                  className="p-1.5 text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white hover:bg-stone-100 dark:hover:bg-stone-800 rounded transition-colors cursor-pointer flex items-center gap-1 focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300 focus-visible:outline-none"
                   title={isVideo ? t.downloadVideo : t.downloadFile}
                 >
-                  <Download className="w-3.5 h-3.5" />
+                  <Download className="w-3.5 h-3.5" aria-hidden="true" />
                   <span className="text-[11px] hidden lg:inline">
                     {isVideo ? 'MP4' : isWord ? 'DOCX' : isImage ? 'IMG' : 'PDF'}
                   </span>
@@ -285,10 +293,11 @@ export const PdfCard: React.FC<PdfCardProps> = ({
                 {isVideo && item.powerpointUrl && isPptDownloadAllowed && onDownloadPowerpoint && (
                   <button
                     onClick={() => onDownloadPowerpoint(item)}
-                    className="p-1.5 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/40 rounded transition-colors cursor-pointer flex items-center gap-1"
+                    aria-label={`${t.downloadPowerpoint}: ${item.powerpointFileName}`}
+                    className="p-1.5 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/40 rounded transition-colors cursor-pointer flex items-center gap-1 focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:outline-none"
                     title={t.downloadPowerpoint}
                   >
-                    <Presentation className="w-3.5 h-3.5" />
+                    <Presentation className="w-3.5 h-3.5" aria-hidden="true" />
                     <span className="text-[11px] font-semibold hidden lg:inline">PPTX</span>
                   </button>
                 )}
@@ -297,8 +306,9 @@ export const PdfCard: React.FC<PdfCardProps> = ({
               <span
                 className="text-[11px] text-stone-400 dark:text-stone-500 flex items-center gap-1 cursor-not-allowed select-none"
                 title={t.downloadDisabledTip}
+                aria-label={t.downloadDisabledTip}
               >
-                <Lock className="w-3 h-3" />
+                <Lock className="w-3 h-3" aria-hidden="true" />
                 <span className="hidden sm:inline">{t.downloadDisabled}</span>
               </span>
             )}

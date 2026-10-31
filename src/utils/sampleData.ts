@@ -40,6 +40,7 @@ export const INITIAL_ADMIN_CONFIG: AdminConfig = {
   allowGlobalDownloads: true,
   exifSettings: INITIAL_EXIF_SETTINGS,
   customCssEnabled: false,
+  showRssWidget: true,
 };
 
 export const INITIAL_FOLDERS: PdfFolder[] = [

@@ -29,6 +29,8 @@ import { FilterBar } from './components/FilterBar';
 import { PdfGrid } from './components/PdfGrid';
 import { InlinePdfViewerModal } from './components/InlinePdfViewerModal';
 import { AdminModal } from './components/AdminModal';
+import { RecentlyAddedWidget } from './components/RecentlyAddedWidget';
+import { downloadRssFeed } from './utils/rss';
 
 export default function App() {
   // Theme state
@@ -305,6 +307,24 @@ export default function App() {
   return (
     <div className="min-h-screen bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100 flex flex-col transition-colors selection:bg-stone-800 selection:text-white">
       
+      {/* Skip to Main Content Link for Keyboard / Screen Reader Accessibility */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:start-3 focus:z-50 focus:px-4 focus:py-2 focus:bg-stone-900 focus:text-white dark:focus:bg-stone-100 dark:focus:text-stone-900 focus:font-semibold focus:text-xs focus:rounded-md focus:shadow-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+      >
+        {t.skipToContent}
+      </a>
+
+      {/* Screen Reader Live Region for Search & Filter announcements */}
+      <div
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        className="sr-only"
+      >
+        {t.resultsCountLive.replace('{count}', String(displayedItems.length))}
+      </div>
+
       {/* 1. Header (Top Bar Contract) */}
       <Header
         language={language}
@@ -323,6 +343,9 @@ export default function App() {
         onOpenPhpGuide={() => {
           setIsAdminModalOpen(true);
         }}
+        onDownloadRss={() => {
+          downloadRssFeed(items, folders, config);
+        }}
       />
 
       {/* 2. Hero Section */}
@@ -336,8 +359,22 @@ export default function App() {
       />
 
       {/* 3. Main Gallery Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-6 py-10 space-y-8">
+      <main id="main-content" tabIndex={-1} className="flex-1 max-w-7xl w-full mx-auto px-6 py-10 space-y-8 focus:outline-none">
         
+        {/* Recently Added Media RSS Widget (supports PDF, Video, Word, Presentation, Image & Thumbnails) */}
+        <RecentlyAddedWidget
+          items={items}
+          folders={folders}
+          language={language}
+          config={config}
+          isEnabled={config.showRssWidget !== false}
+          onToggleEnabled={(enabled) => handleUpdateConfig({ ...config, showRssWidget: enabled })}
+          onViewInline={(item) => setActiveViewerItem(item)}
+          onOpenNewTab={handleOpenNewTab}
+          onDownload={handleDownload}
+          onDownloadPowerpoint={handleDownloadPowerpoint}
+        />
+
         {/* Filter, Search, Format, Tag, and Sorting Controls */}
         <FilterBar
           language={language}
