@@ -4,16 +4,16 @@
  */
 
 import { dump, load } from 'js-yaml';
-import { AdminConfig, PdfFolder, PdfItem } from '../types';
+import { AdminConfig, MediaItem, PdfFolder } from '../types';
 import {
   INITIAL_ADMIN_CONFIG,
   INITIAL_FOLDERS,
   generateInitialItems
 } from './sampleData';
 
-const STORAGE_KEY_FOLDERS = 'foliovault_folders_v1';
-const STORAGE_KEY_ITEMS = 'foliovault_items_v1';
-const STORAGE_KEY_CONFIG = 'foliovault_config_v1';
+const STORAGE_KEY_FOLDERS = 'foliovault_folders_v2';
+const STORAGE_KEY_ITEMS = 'foliovault_items_v2';
+const STORAGE_KEY_CONFIG = 'foliovault_config_v2';
 
 export function loadStoredFolders(): PdfFolder[] {
   try {
@@ -36,17 +36,15 @@ export function saveStoredFolders(folders: PdfFolder[]): void {
   }
 }
 
-export function loadStoredItems(): PdfItem[] {
+export function loadStoredItems(): MediaItem[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_ITEMS);
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        // Ensure URLs exist for items if they were lost during session
         parsed.forEach(item => {
           if (!item.url) {
-            // Generate basic fallback blob
-            const dummyBlob = new Blob([`%PDF-1.4 FolioVault Document ${item.name}`], { type: 'application/pdf' });
+            const dummyBlob = new Blob([`FolioVault Media Content: ${item.name}`], { type: 'text/plain' });
             item.url = URL.createObjectURL(dummyBlob);
           }
         });
@@ -59,12 +57,12 @@ export function loadStoredItems(): PdfItem[] {
   return generateInitialItems();
 }
 
-export function saveStoredItems(items: PdfItem[]): void {
+export function saveStoredItems(items: MediaItem[]): void {
   try {
-    // Note: Do not serialize transient blob URLs to localStorage to avoid quota limits
     const sanitized = items.map(item => ({
       ...item,
-      url: item.url.startsWith('blob:') ? '' : item.url, // blobs are re-instantiated
+      url: item.url.startsWith('blob:') ? '' : item.url,
+      powerpointUrl: item.powerpointUrl?.startsWith('blob:') ? '' : item.powerpointUrl,
     }));
     localStorage.setItem(STORAGE_KEY_ITEMS, JSON.stringify(sanitized));
   } catch (e) {
@@ -92,11 +90,12 @@ export function saveStoredConfig(config: AdminConfig): void {
   }
 }
 
-export function exportGalleryToYaml(folders: PdfFolder[], items: PdfItem[], config: AdminConfig): string {
+export function exportGalleryToYaml(folders: PdfFolder[], items: MediaItem[], config: AdminConfig): string {
   const exportPayload = {
-    foliovault_version: '2026.1',
+    foliovault_version: '2.1.0',
     exported_at: new Date().toISOString(),
     settings: {
+      version: config.version || '2.1.0',
       galleryTitle: config.galleryTitle,
       gallerySubtitle: config.gallerySubtitle,
       defaultLanguage: config.defaultLanguage,
@@ -112,10 +111,11 @@ export function exportGalleryToYaml(folders: PdfFolder[], items: PdfItem[], conf
       visibleInFrontend: f.visibleInFrontend,
       order: f.order,
     })),
-    documents: items.map(i => ({
+    media_items: items.map(i => ({
       id: i.id,
       name: i.name,
       originalFileName: i.originalFileName,
+      fileType: i.fileType || 'pdf',
       folderId: i.folderId,
       tags: i.tags,
       uploadDate: i.uploadDate,
@@ -124,6 +124,9 @@ export function exportGalleryToYaml(folders: PdfFolder[], items: PdfItem[], conf
       order: i.order,
       summary: i.summary,
       exif: i.exif,
+      powerpointFileName: i.powerpointFileName,
+      powerpointFileSize: i.powerpointFileSize,
+      allowPowerpointDownload: i.allowPowerpointDownload,
     }))
   };
 
@@ -132,7 +135,7 @@ export function exportGalleryToYaml(folders: PdfFolder[], items: PdfItem[], conf
 
 export function importGalleryFromYaml(yamlContent: string): {
   folders?: PdfFolder[];
-  items?: Partial<PdfItem>[];
+  items?: Partial<MediaItem>[];
   settings?: Partial<AdminConfig>;
 } {
   const parsed = load(yamlContent) as any;
@@ -142,22 +145,19 @@ export function importGalleryFromYaml(yamlContent: string): {
 
   return {
     folders: parsed.folders,
-    items: parsed.documents,
+    items: parsed.media_items || parsed.documents,
     settings: parsed.settings,
   };
 }
 
-/**
- * Generates a self-contained single portable HTML file containing all HTML, CSS,
- * JavaScript logic, albums, documents, EXIF, and viewers in one file as requested!
- */
-export function generateSingleHtmlBundle(folders: PdfFolder[], items: PdfItem[], config: AdminConfig): string {
+export function generateSingleHtmlBundle(folders: PdfFolder[], items: MediaItem[], config: AdminConfig): string {
   const jsonCatalog = JSON.stringify({
     config,
     folders,
     items: items.map(i => ({
       ...i,
-      url: i.url.startsWith('blob:') ? '' : i.url
+      url: i.url.startsWith('blob:') ? '' : i.url,
+      powerpointUrl: i.powerpointUrl?.startsWith('blob:') ? '' : i.powerpointUrl
     }))
   });
 
@@ -166,13 +166,11 @@ export function generateSingleHtmlBundle(folders: PdfFolder[], items: PdfItem[],
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${config.galleryTitle}</title>
+  <title>${config.galleryTitle} (v2.1)</title>
   <meta name="description" content="${config.gallerySubtitle}">
-  <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <!-- Tailwind via CDN for single-file portability -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Optional additional site stylesheet import -->
   <!-- <link rel="stylesheet" href="/site-theme.css"> -->
@@ -189,11 +187,11 @@ export function generateSingleHtmlBundle(folders: PdfFolder[], items: PdfItem[],
 <body class="bg-stone-50 text-stone-900 min-h-screen">
   <header class="border-b border-stone-200 bg-white/90 backdrop-blur sticky top-0 z-40 px-6 py-4 flex items-center justify-between">
     <div>
-      <h1 class="text-xl font-bold tracking-tight text-stone-900 font-serif">${config.galleryTitle}</h1>
+      <h1 class="text-xl font-bold tracking-tight text-stone-900 font-serif">${config.galleryTitle} <span class="text-xs font-mono font-normal text-stone-500">v2.1</span></h1>
       <p class="text-xs text-stone-500">${config.gallerySubtitle}</p>
     </div>
     <div class="flex items-center gap-3">
-      <span class="text-xs text-stone-500">Standalone Portable Bundle</span>
+      <span class="text-xs bg-stone-100 text-stone-700 px-2.5 py-1 rounded">Multi-Format Bundle</span>
     </div>
   </header>
   <main class="max-w-7xl mx-auto px-6 py-8">
@@ -203,26 +201,31 @@ export function generateSingleHtmlBundle(folders: PdfFolder[], items: PdfItem[],
     const CATALOG = ${jsonCatalog};
     const container = document.getElementById('gallery-container');
     
-    // Render documents
     CATALOG.items.forEach(doc => {
       const folder = CATALOG.folders.find(f => f.id === doc.folderId);
+      const isVideo = doc.fileType === 'video';
       const card = document.createElement('article');
       card.className = "bg-white border border-stone-200 rounded-lg overflow-hidden shadow-sm hover:shadow transition-shadow flex flex-col";
+      
+      let extraActions = '';
+      if (isVideo && doc.powerpointFileName) {
+        extraActions = '<div class="mt-2 text-[11px] text-stone-500">Includes original slide deck: <strong>' + doc.powerpointFileName + '</strong></div>';
+      }
+
       card.innerHTML = \`
-        <div class="h-48 bg-stone-100 flex items-center justify-center p-4 border-b border-stone-100">
+        <div class="h-48 bg-stone-100 flex items-center justify-center p-4 border-b border-stone-100 relative">
           <img src="\${doc.thumbnailUrl || ''}" alt="\${doc.name}" class="max-h-full max-w-full object-contain shadow-sm" onerror="this.style.display='none'">
+          <span class="absolute top-2 end-2 bg-stone-900 text-white text-[10px] uppercase font-semibold px-2 py-0.5 rounded">\${doc.fileType.toUpperCase()}</span>
         </div>
         <div class="p-5 flex-1 flex flex-col justify-between">
           <div>
             <div class="text-xs text-stone-500 mb-1 font-medium">\${folder ? folder.name : 'Archive'}</div>
             <h2 class="text-base font-semibold text-stone-900 mb-2 leading-snug">\${doc.exif?.title || doc.name}</h2>
             <p class="text-xs text-stone-600 line-clamp-2 mb-3">\${doc.summary || ''}</p>
-            <div class="flex flex-wrap gap-1 text-xs text-stone-500">
-              \${(doc.tags || []).map(t => '<span>#' + t + '</span>').join(' ')}
-            </div>
+            \${extraActions}
           </div>
           <div class="mt-4 pt-3 border-t border-stone-100 flex items-center justify-between text-xs">
-            <span class="text-stone-500">\${(doc.fileSize / 1024 / 1024).toFixed(1)} MB</span>
+            <span class="text-stone-500 font-mono">\${(doc.fileSize / 1024 / 1024).toFixed(1)} MB</span>
             <span class="text-stone-700 font-medium">\${doc.exif?.author || 'Archival Record'}</span>
           </div>
         </div>
@@ -236,15 +239,28 @@ export function generateSingleHtmlBundle(folders: PdfFolder[], items: PdfItem[],
 
 /**
  * Standard PHP 8.1+ / 8.2+ / 8.3+ directory scanner code for users deploying on LAMP/Nginx servers without SQL.
+ * Now enhanced with:
+ * - Extensions: pdf, mp4, webm, mov, docx, doc, odt, pptx, ppt, odp, jpg, jpeg, png, webp, gif
+ * - Unbounded video duration (decided by PHP max upload limits: upload_max_filesize, post_max_size)
+ * - Automatic pairing of .pptx, .ppt, or .odp slide decks with video files!
  */
 export const PHP_SCANNER_GUIDE = `<?php
 /**
- * FolioVault Databaseless Directory Scanner for PHP
+ * FolioVault v2.1 Databaseless Directory Scanner for PHP
  * Compatible with: PHP 8.1, PHP 8.2, PHP 8.3+
- * No database required. Place this file as 'index.php' or 'api/documents.php'
+ * Zero Database. Flat file directory scanner with dual download support.
+ *
+ * SERVER CONFIGURATION (php.ini or .htaccess or .user.ini)
+ * Videos have no duration limits; upload size is determined by PHP settings:
+ *   upload_max_filesize = 2048M   ; 2GB or higher as needed
+ *   post_max_size = 2048M
+ *   memory_limit = 512M
+ *   max_execution_time = 600
+ *   max_input_time = 600
  */
 
 header('Content-Type: application/json; charset=utf-8');
+header('Access-Control-Allow-Origin: *');
 
 $documentsDir = __DIR__ . '/documents';
 if (!is_dir($documentsDir)) {
@@ -257,20 +273,54 @@ $folders = array_diff(scandir($documentsDir), ['.', '..']);
 foreach ($folders as $folder) {
     $folderPath = $documentsDir . '/' . $folder;
     if (is_dir($folderPath)) {
-        $pdfFiles = glob($folderPath . '/*.pdf');
-        $docs = [];
-        foreach ($pdfFiles as $pdf) {
-            $docs[] = [
-                'name' => basename($pdf),
-                'size' => filesize($pdf),
-                'modified' => date('c', filemtime($pdf)),
-                'url' => 'documents/' . rawurlencode($folder) . '/' . rawurlencode(basename($pdf))
+        // Match PDF, MP4, WebM, MOV, DOCX, DOC, ODT, PPTX, PPT, ODP, JPG, PNG, WebP, GIF
+        $pattern = $folderPath . '/*.{pdf,mp4,webm,mov,docx,doc,odt,pptx,ppt,odp,jpg,jpeg,png,webp,gif}';
+        $files = glob($pattern, GLOB_BRACE);
+        $media = [];
+
+        foreach ($files as $file) {
+            $baseName = basename($file);
+            $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
+
+            $type = match($ext) {
+                'mp4', 'webm', 'mov' => 'video',
+                'pptx', 'ppt', 'odp' => 'presentation',
+                'docx', 'doc', 'odt' => 'word',
+                'jpg', 'jpeg', 'png', 'webp', 'gif' => 'image',
+                default => 'pdf',
+            };
+
+            $item = [
+                'name' => $baseName,
+                'fileType' => $type,
+                'extension' => $ext,
+                'size' => filesize($file),
+                'modified' => date('c', filemtime($file)),
+                'url' => 'documents/' . rawurlencode($folder) . '/' . rawurlencode($baseName)
             ];
+
+            // For video files: auto-detect paired PowerPoint or ODP slide deck (.pptx, .ppt, .odp)!
+            if ($type === 'video') {
+                $baseWithoutExt = pathinfo($file, PATHINFO_FILENAME);
+                $deckExtensions = ['pptx', 'ppt', 'odp'];
+                foreach ($deckExtensions as $deckExt) {
+                    $deckCandidate = $folderPath . '/' . $baseWithoutExt . '.' . $deckExt;
+                    if (file_exists($deckCandidate)) {
+                        $item['powerpointUrl'] = 'documents/' . rawurlencode($folder) . '/' . rawurlencode(basename($deckCandidate));
+                        $item['powerpointFileName'] = basename($deckCandidate);
+                        $item['powerpointFileSize'] = filesize($deckCandidate);
+                        break;
+                    }
+                }
+            }
+
+            $media[] = $item;
         }
+
         $albums[] = [
             'folder' => $folder,
-            'count' => count($docs),
-            'documents' => $docs
+            'count' => count($media),
+            'items' => $media
         ];
     }
 }

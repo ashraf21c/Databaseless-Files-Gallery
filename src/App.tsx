@@ -6,9 +6,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   AdminConfig,
+  FileType,
   Language,
+  MediaItem,
   PdfFolder,
-  PdfItem,
   SortField,
   SortOrder
 } from './types';
@@ -41,7 +42,7 @@ export default function App() {
   // Core Databaseless State
   const [config, setConfig] = useState<AdminConfig>(loadStoredConfig);
   const [folders, setFolders] = useState<PdfFolder[]>(loadStoredFolders);
-  const [items, setItems] = useState<PdfItem[]>(loadStoredItems);
+  const [items, setItems] = useState<MediaItem[]>(loadStoredItems);
 
   // Authentication State
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
@@ -49,6 +50,7 @@ export default function App() {
 
   // Gallery Filters & View State
   const [selectedFolderId, setSelectedFolderId] = useState<string | 'all'>('all');
+  const [selectedFormat, setSelectedFormat] = useState<FileType | 'all'>('all');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [sortField, setSortField] = useState<SortField>('uploadDate');
@@ -56,7 +58,7 @@ export default function App() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   // Active Inline Viewer Modal
-  const [activeViewerItem, setActiveViewerItem] = useState<PdfItem | null>(null);
+  const [activeViewerItem, setActiveViewerItem] = useState<MediaItem | null>(null);
 
   // Sync HTML dir and lang for Arabic / Japanese / English (RTL=auto)
   useEffect(() => {
@@ -84,7 +86,7 @@ export default function App() {
     saveStoredFolders(newFolders);
   };
 
-  const handleUpdateItems = (newItems: PdfItem[]) => {
+  const handleUpdateItems = (newItems: MediaItem[]) => {
     setItems(newItems);
     saveStoredItems(newItems);
   };
@@ -107,6 +109,7 @@ export default function App() {
     saveStoredItems(defaultItems);
     saveStoredConfig(defaultConfig);
     setSelectedFolderId('all');
+    setSelectedFormat('all');
     setSelectedTags([]);
   };
 
@@ -137,7 +140,22 @@ export default function App() {
     return counts;
   }, [items]);
 
-  // Filtered & Sorted PDF Items
+  // Item counts per media format
+  const formatItemCounts = useMemo(() => {
+    const counts: Record<string, number> = {
+      pdf: 0,
+      video: 0,
+      presentation: 0,
+      word: 0,
+      image: 0,
+    };
+    items.forEach(item => {
+      counts[item.fileType] = (counts[item.fileType] || 0) + 1;
+    });
+    return counts;
+  }, [items]);
+
+  // Filtered & Sorted PDF / Media Items
   const displayedItems = useMemo(() => {
     const visibleFolderIds = new Set(visibleFolders.map(f => f.id));
 
@@ -151,13 +169,18 @@ export default function App() {
           return false;
         }
 
-        // 3. Tags filter (if any selected, item must have at least one of them)
+        // 3. Format filter (PDF, Video, Word, Image)
+        if (selectedFormat !== 'all' && item.fileType !== selectedFormat) {
+          return false;
+        }
+
+        // 4. Tags filter
         if (selectedTags.length > 0) {
           const hasMatchingTag = selectedTags.some(tag => item.tags.includes(tag));
           if (!hasMatchingTag) return false;
         }
 
-        // 4. Search query
+        // 5. Search query
         if (searchQuery.trim()) {
           const q = searchQuery.toLowerCase();
           const matchTitle = (item.exif.title || item.name).toLowerCase().includes(q);
@@ -165,7 +188,8 @@ export default function App() {
           const matchSummary = (item.summary || '').toLowerCase().includes(q);
           const matchTags = item.tags.some(t => t.toLowerCase().includes(q));
           const matchFileName = item.originalFileName.toLowerCase().includes(q);
-          if (!matchTitle && !matchAuthor && !matchSummary && !matchTags && !matchFileName) {
+          const matchPpt = (item.powerpointFileName || '').toLowerCase().includes(q);
+          if (!matchTitle && !matchAuthor && !matchSummary && !matchTags && !matchFileName && !matchPpt) {
             return false;
           }
         }
@@ -190,6 +214,9 @@ export default function App() {
           case 'author':
             cmp = (a.exif.author || '').localeCompare(b.exif.author || '');
             break;
+          case 'fileType':
+            cmp = a.fileType.localeCompare(b.fileType);
+            break;
           case 'pageCount':
             cmp = (a.exif.pageCount || 0) - (b.exif.pageCount || 0);
             break;
@@ -201,7 +228,7 @@ export default function App() {
         }
         return sortOrder === 'asc' ? cmp : -cmp;
       });
-  }, [items, visibleFolders, selectedFolderId, selectedTags, searchQuery, sortField, sortOrder]);
+  }, [items, visibleFolders, selectedFolderId, selectedFormat, selectedTags, searchQuery, sortField, sortOrder]);
 
   // Tag filter handlers
   const handleToggleTag = (tag: string) => {
@@ -210,8 +237,8 @@ export default function App() {
     );
   };
 
-  // Download Handler with Strict Permission Check
-  const handleDownload = (item: PdfItem) => {
+  // Main Download Handler with Strict Permission Check
+  const handleDownload = (item: MediaItem) => {
     const folder = folders.find(f => f.id === item.folderId);
     const isAllowed = (folder ? folder.allowDownload : true) && item.allowDownload;
 
@@ -228,8 +255,31 @@ export default function App() {
     document.body.removeChild(link);
   };
 
+  // SPECIFIC REQUIREMENT: Accompanying PowerPoint slide deck download for video files
+  const handleDownloadPowerpoint = (item: MediaItem) => {
+    const folder = folders.find(f => f.id === item.folderId);
+    const isAllowed = (folder ? folder.allowDownload : true) && item.allowDownload && (item.allowPowerpointDownload !== false);
+
+    if (!isAllowed) {
+      alert(translations[language].downloadDisabledTip);
+      return;
+    }
+
+    if (!item.powerpointUrl) {
+      alert(translations[language].noPowerpointAttached);
+      return;
+    }
+
+    const link = document.createElement('a');
+    link.href = item.powerpointUrl;
+    link.download = item.powerpointFileName || `${item.name.replace(/\.[^/.]+$/, '')}_Presentation.pptx`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   // Open in New Tab Handler
-  const handleOpenNewTab = (item: PdfItem) => {
+  const handleOpenNewTab = (item: MediaItem) => {
     window.open(item.url, '_blank', 'noopener,noreferrer');
   };
 
@@ -288,12 +338,14 @@ export default function App() {
       {/* 3. Main Gallery Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-6 py-10 space-y-8">
         
-        {/* Filter, Search, Tag, and Sorting Controls */}
+        {/* Filter, Search, Format, Tag, and Sorting Controls */}
         <FilterBar
           language={language}
           folders={visibleFolders}
           selectedFolderId={selectedFolderId}
           onSelectFolder={setSelectedFolderId}
+          selectedFormat={selectedFormat}
+          onSelectFormat={setSelectedFormat}
           availableTags={availableTags}
           selectedTags={selectedTags}
           onToggleTag={handleToggleTag}
@@ -307,9 +359,10 @@ export default function App() {
           viewMode={viewMode}
           onViewModeChange={setViewMode}
           folderItemCounts={folderItemCounts}
+          formatItemCounts={formatItemCounts}
         />
 
-        {/* PDF Documents Grid or List */}
+        {/* Media Items Grid or List */}
         <PdfGrid
           items={displayedItems}
           folders={folders}
@@ -319,8 +372,10 @@ export default function App() {
           onViewInline={(item) => setActiveViewerItem(item)}
           onOpenNewTab={handleOpenNewTab}
           onDownload={handleDownload}
+          onDownloadPowerpoint={handleDownloadPowerpoint}
           onResetFilters={() => {
             setSelectedFolderId('all');
+            setSelectedFormat('all');
             setSelectedTags([]);
             setSearchQuery('');
           }}
@@ -332,9 +387,9 @@ export default function App() {
       <footer className="border-t border-stone-200 dark:border-stone-800 bg-white/50 dark:bg-stone-900/40 text-stone-500 py-8 text-xs">
         <div className="max-w-7xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div>
-            <span className="font-serif font-medium text-stone-700 dark:text-stone-300">FolioVault</span>
+            <span className="font-serif font-medium text-stone-700 dark:text-stone-300">FolioVault v2.0</span>
             <span className="mx-2">·</span>
-            <span>{t.standaloneNote}</span>
+            <span>PDF, Video (MP4 + PPTX), Word (DOCX), Images</span>
           </div>
 
           <div className="flex items-center gap-6">
@@ -350,7 +405,7 @@ export default function App() {
         </div>
       </footer>
 
-      {/* 5. Inline PDF Viewer Modal */}
+      {/* 5. Inline Multi-Format Viewer Modal */}
       {activeViewerItem && (
         <InlinePdfViewerModal
           item={activeViewerItem}
@@ -361,6 +416,7 @@ export default function App() {
           onClose={() => setActiveViewerItem(null)}
           onOpenNewTab={handleOpenNewTab}
           onDownload={handleDownload}
+          onDownloadPowerpoint={handleDownloadPowerpoint}
           onNavigatePrev={handleNavigatePrev}
           onNavigateNext={handleNavigateNext}
           hasPrev={hasPrev}
@@ -368,7 +424,7 @@ export default function App() {
         />
       )}
 
-      {/* 6. Admin Management & Upload Modal */}
+      {/* 6. Admin Management & Multi-Format Upload Modal */}
       <AdminModal
         isOpen={isAdminModalOpen}
         onClose={() => setIsAdminModalOpen(false)}

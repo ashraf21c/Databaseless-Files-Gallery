@@ -4,8 +4,22 @@
  */
 
 import React from 'react';
-import { Search, ArrowUpDown, LayoutGrid, List, Lock, Folder, Tag } from 'lucide-react';
-import { Language, PdfFolder, SortField, SortOrder } from '../types';
+import {
+  Search,
+  ArrowUpDown,
+  LayoutGrid,
+  List,
+  Lock,
+  Folder,
+  Tag,
+  FileText,
+  Video,
+  Image as ImageIcon,
+  FileSpreadsheet,
+  Presentation,
+  Filter
+} from 'lucide-react';
+import { FileType, Language, PdfFolder, SortField, SortOrder } from '../types';
 import { translations } from '../utils/translations';
 
 interface FilterBarProps {
@@ -13,6 +27,8 @@ interface FilterBarProps {
   folders: PdfFolder[];
   selectedFolderId: string | 'all';
   onSelectFolder: (folderId: string | 'all') => void;
+  selectedFormat: FileType | 'all';
+  onSelectFormat: (format: FileType | 'all') => void;
   availableTags: string[];
   selectedTags: string[];
   onToggleTag: (tag: string) => void;
@@ -26,6 +42,7 @@ interface FilterBarProps {
   viewMode: 'grid' | 'list';
   onViewModeChange: (mode: 'grid' | 'list') => void;
   folderItemCounts: Record<string, number>;
+  formatItemCounts: Record<string, number>;
 }
 
 export const FilterBar: React.FC<FilterBarProps> = ({
@@ -33,6 +50,8 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   folders,
   selectedFolderId,
   onSelectFolder,
+  selectedFormat,
+  onSelectFormat,
   availableTags,
   selectedTags,
   onToggleTag,
@@ -46,17 +65,18 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   viewMode,
   onViewModeChange,
   folderItemCounts,
+  formatItemCounts,
 }) => {
   const t = translations[language];
 
   const totalVisibleDocs = Object.values(folderItemCounts).reduce((a, b) => a + b, 0);
 
   return (
-    <div id="collections-bar" className="space-y-5">
+    <div id="collections-bar" className="space-y-4">
       
       {/* 1. Folder / Album Tabs (Segmented bar) */}
       <div>
-        <div className="flex items-center justify-between mb-2.5">
+        <div className="flex items-center justify-between mb-2">
           <span className="text-xs font-semibold tracking-wider uppercase text-stone-500 dark:text-stone-400 flex items-center gap-1.5">
             <Folder className="w-3.5 h-3.5" />
             {t.filterByFolder}
@@ -107,7 +127,88 @@ export const FilterBar: React.FC<FilterBarProps> = ({
         </div>
       </div>
 
-      {/* 2. Tag Filter Bar */}
+      {/* 2. Format Selector Tabs (PDF, Video, Word, Image) */}
+      <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+        <div className="flex items-center gap-1.5 p-1 bg-stone-100 dark:bg-stone-800/80 rounded-lg border border-stone-200 dark:border-stone-700/80 text-xs">
+          <span className="text-[11px] text-stone-400 font-medium px-2 flex items-center gap-1">
+            <Filter className="w-3 h-3" />
+            {t.filterByFormat}:
+          </span>
+
+          <button
+            onClick={() => onSelectFormat('all')}
+            className={`px-2.5 py-1 rounded transition-colors cursor-pointer ${
+              selectedFormat === 'all'
+                ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 font-semibold shadow-xs'
+                : 'text-stone-600 dark:text-stone-400 hover:text-stone-900'
+            }`}
+          >
+            {t.formatAll} ({totalVisibleDocs})
+          </button>
+
+          <button
+            onClick={() => onSelectFormat('pdf')}
+            className={`px-2.5 py-1 rounded transition-colors flex items-center gap-1 cursor-pointer ${
+              selectedFormat === 'pdf'
+                ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 font-semibold shadow-xs'
+                : 'text-stone-600 dark:text-stone-400 hover:text-stone-900'
+            }`}
+          >
+            <FileText className="w-3 h-3 text-red-500" />
+            <span>{t.formatPdf} ({formatItemCounts['pdf'] || 0})</span>
+          </button>
+
+          <button
+            onClick={() => onSelectFormat('video')}
+            className={`px-2.5 py-1 rounded transition-colors flex items-center gap-1 cursor-pointer ${
+              selectedFormat === 'video'
+                ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 font-semibold shadow-xs'
+                : 'text-stone-600 dark:text-stone-400 hover:text-stone-900'
+            }`}
+          >
+            <Video className="w-3 h-3 text-amber-500" />
+            <span>{t.formatVideo} ({formatItemCounts['video'] || 0})</span>
+          </button>
+
+          <button
+            onClick={() => onSelectFormat('presentation')}
+            className={`px-2.5 py-1 rounded transition-colors flex items-center gap-1 cursor-pointer ${
+              selectedFormat === 'presentation'
+                ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 font-semibold shadow-xs'
+                : 'text-stone-600 dark:text-stone-400 hover:text-stone-900'
+            }`}
+          >
+            <Presentation className="w-3 h-3 text-orange-500" />
+            <span>{t.formatPresentation} ({formatItemCounts['presentation'] || 0})</span>
+          </button>
+
+          <button
+            onClick={() => onSelectFormat('word')}
+            className={`px-2.5 py-1 rounded transition-colors flex items-center gap-1 cursor-pointer ${
+              selectedFormat === 'word'
+                ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 font-semibold shadow-xs'
+                : 'text-stone-600 dark:text-stone-400 hover:text-stone-900'
+            }`}
+          >
+            <FileSpreadsheet className="w-3 h-3 text-blue-500" />
+            <span>{t.formatWord} ({formatItemCounts['word'] || 0})</span>
+          </button>
+
+          <button
+            onClick={() => onSelectFormat('image')}
+            className={`px-2.5 py-1 rounded transition-colors flex items-center gap-1 cursor-pointer ${
+              selectedFormat === 'image'
+                ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 font-semibold shadow-xs'
+                : 'text-stone-600 dark:text-stone-400 hover:text-stone-900'
+            }`}
+          >
+            <ImageIcon className="w-3 h-3 text-emerald-500" />
+            <span>{t.formatImage} ({formatItemCounts['image'] || 0})</span>
+          </button>
+        </div>
+      </div>
+
+      {/* 3. Tag Filter Bar */}
       {availableTags.length > 0 && (
         <div className="flex flex-wrap items-center gap-2 pt-1">
           <span className="text-xs text-stone-500 dark:text-stone-400 flex items-center gap-1 font-medium">
@@ -143,7 +244,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
         </div>
       )}
 
-      {/* 3. Search and Sort Ribbon */}
+      {/* 4. Search and Sort Ribbon */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2">
         
         {/* Search input */}
@@ -174,6 +275,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               <option value="uploadDate" className="dark:bg-stone-800">{t.sortDate}</option>
               <option value="title" className="dark:bg-stone-800">{t.sortTitle}</option>
               <option value="author" className="dark:bg-stone-800">{t.sortAuthor}</option>
+              <option value="fileType" className="dark:bg-stone-800">{t.sortFileType}</option>
               <option value="pageCount" className="dark:bg-stone-800">{t.sortPageCount}</option>
               <option value="creationDate" className="dark:bg-stone-800">{t.sortCreationDate}</option>
             </select>

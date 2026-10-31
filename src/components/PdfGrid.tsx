@@ -4,20 +4,32 @@
  */
 
 import React from 'react';
-import { Eye, ExternalLink, Download, Lock, FileQuestion, BookOpen } from 'lucide-react';
-import { ExifDisplaySettings, Language, PdfFolder, PdfItem } from '../types';
+import {
+  Eye,
+  ExternalLink,
+  Download,
+  Lock,
+  FileQuestion,
+  BookOpen,
+  Video,
+  FileSpreadsheet,
+  Image as ImageIcon,
+  Presentation
+} from 'lucide-react';
+import { ExifDisplaySettings, Language, MediaItem, PdfFolder } from '../types';
 import { translations } from '../utils/translations';
 import { PdfCard } from './PdfCard';
 
 interface PdfGridProps {
-  items: PdfItem[];
+  items: MediaItem[];
   folders: PdfFolder[];
   language: Language;
   exifSettings: ExifDisplaySettings;
   viewMode: 'grid' | 'list';
-  onViewInline: (item: PdfItem) => void;
-  onOpenNewTab: (item: PdfItem) => void;
-  onDownload: (item: PdfItem) => void;
+  onViewInline: (item: MediaItem) => void;
+  onOpenNewTab: (item: MediaItem) => void;
+  onDownload: (item: MediaItem) => void;
+  onDownloadPowerpoint: (item: MediaItem) => void;
   onResetFilters?: () => void;
 }
 
@@ -30,6 +42,7 @@ export const PdfGrid: React.FC<PdfGridProps> = ({
   onViewInline,
   onOpenNewTab,
   onDownload,
+  onDownloadPowerpoint,
   onResetFilters,
 }) => {
   const t = translations[language];
@@ -55,7 +68,7 @@ export const PdfGrid: React.FC<PdfGridProps> = ({
             onClick={onResetFilters}
             className="px-4 py-2 text-xs font-medium text-stone-900 dark:text-stone-100 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 rounded-md transition-colors cursor-pointer"
           >
-            {t.allAlbums} / {t.allTags}
+            {t.allAlbums} / {t.formatAll}
           </button>
         )}
       </div>
@@ -70,6 +83,7 @@ export const PdfGrid: React.FC<PdfGridProps> = ({
             <thead className="bg-stone-50 dark:bg-stone-800/60 border-b border-stone-200 dark:border-stone-800 text-stone-500 uppercase tracking-wider font-semibold text-[11px]">
               <tr>
                 <th scope="col" className="px-4 py-3 text-start">{t.sortTitle}</th>
+                <th scope="col" className="px-4 py-3 text-start">{t.sortFileType}</th>
                 <th scope="col" className="px-4 py-3 text-start">{t.folderName}</th>
                 <th scope="col" className="px-4 py-3 text-start">{t.sortAuthor}</th>
                 <th scope="col" className="px-4 py-3 text-start">{t.sortSize}</th>
@@ -81,8 +95,14 @@ export const PdfGrid: React.FC<PdfGridProps> = ({
               {items.map(item => {
                 const folder = folderMap.get(item.folderId);
                 const isDownloadAllowed = (folder ? folder.allowDownload : true) && item.allowDownload;
+                const isPptDownloadAllowed = isDownloadAllowed && (item.allowPowerpointDownload !== false);
                 const fileSizeMb = (item.fileSize / (1024 * 1024)).toFixed(2);
                 const folderName = folder?.nameTranslations?.[language] || folder?.name || 'Archive';
+
+                const isVideo = item.fileType === 'video';
+                const isPresentation = item.fileType === 'presentation';
+                const isWord = item.fileType === 'word';
+                const isImage = item.fileType === 'image';
 
                 return (
                   <tr
@@ -98,6 +118,14 @@ export const PdfGrid: React.FC<PdfGridProps> = ({
                         >
                           {item.thumbnailUrl ? (
                             <img src={item.thumbnailUrl} alt="" className="w-full h-full object-cover" />
+                          ) : isVideo ? (
+                            <Video className="w-4 h-4 text-amber-500" />
+                          ) : isPresentation ? (
+                            <Presentation className="w-4 h-4 text-orange-500" />
+                          ) : isWord ? (
+                            <FileSpreadsheet className="w-4 h-4 text-blue-500" />
+                          ) : isImage ? (
+                            <ImageIcon className="w-4 h-4 text-emerald-500" />
                           ) : (
                             <BookOpen className="w-4 h-4 text-stone-400" />
                           )}
@@ -105,9 +133,9 @@ export const PdfGrid: React.FC<PdfGridProps> = ({
                         <div>
                           <div
                             onClick={() => onViewInline(item)}
-                            className="font-medium text-stone-900 dark:text-stone-100 hover:underline cursor-pointer"
+                            className="font-medium text-stone-900 dark:text-stone-100 hover:underline cursor-pointer flex items-center gap-2"
                           >
-                            {exifSettings.showTitle && item.exif.title ? item.exif.title : item.name}
+                            <span>{exifSettings.showTitle && item.exif.title ? item.exif.title : item.name}</span>
                           </div>
                           <div className="text-[11px] text-stone-400 font-mono truncate max-w-xs">
                             {item.originalFileName}
@@ -116,12 +144,19 @@ export const PdfGrid: React.FC<PdfGridProps> = ({
                       </div>
                     </td>
 
+                    {/* Media Type */}
+                    <td className="px-4 py-3.5 text-stone-600 dark:text-stone-300">
+                      <span className="font-mono uppercase text-[11px] font-semibold text-stone-500">
+                        {item.fileType}
+                      </span>
+                    </td>
+
                     {/* Folder */}
                     <td className="px-4 py-3.5 text-stone-600 dark:text-stone-300">
                       <span>{folderName}</span>
                     </td>
 
-                    {/* Author */}
+                    {/* Author / Presenter */}
                     <td className="px-4 py-3.5 text-stone-600 dark:text-stone-300">
                       {exifSettings.showAuthor && item.exif.author ? item.exif.author : '—'}
                     </td>
@@ -129,7 +164,12 @@ export const PdfGrid: React.FC<PdfGridProps> = ({
                     {/* Size */}
                     <td className="px-4 py-3.5 text-stone-500 tabular-nums">
                       {fileSizeMb} MB
-                      {exifSettings.showPageCount && item.exif.pageCount && (
+                      {isVideo && item.exif.videoDuration && (
+                        <span className="text-[11px] block font-mono text-stone-400">
+                          {item.exif.videoDuration}
+                        </span>
+                      )}
+                      {!isVideo && exifSettings.showPageCount && item.exif.pageCount && (
                         <span className="text-[11px] block text-stone-400">
                           {item.exif.pageCount} {t.pages}
                         </span>
@@ -141,7 +181,7 @@ export const PdfGrid: React.FC<PdfGridProps> = ({
                       {exifSettings.showCreationDate && item.exif.creationDate ? item.exif.creationDate : '—'}
                     </td>
 
-                    {/* Actions */}
+                    {/* Actions with Dual Download for Video */}
                     <td className="px-4 py-3.5 text-end">
                       <div className="flex items-center justify-end gap-1.5">
                         <button
@@ -158,14 +198,29 @@ export const PdfGrid: React.FC<PdfGridProps> = ({
                         >
                           <ExternalLink className="w-4 h-4" />
                         </button>
+
+                        {/* Download Video / File */}
                         {isDownloadAllowed ? (
-                          <button
-                            onClick={() => onDownload(item)}
-                            className="p-1.5 text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 rounded transition-colors cursor-pointer"
-                            title={t.downloadPdf}
-                          >
-                            <Download className="w-4 h-4" />
-                          </button>
+                          <>
+                            <button
+                              onClick={() => onDownload(item)}
+                              className="p-1.5 text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 rounded transition-colors cursor-pointer"
+                              title={isVideo ? t.downloadVideo : t.downloadFile}
+                            >
+                              <Download className="w-4 h-4" />
+                            </button>
+
+                            {/* Accompanying PowerPoint slide deck download */}
+                            {isVideo && item.powerpointUrl && isPptDownloadAllowed && (
+                              <button
+                                onClick={() => onDownloadPowerpoint(item)}
+                                className="p-1.5 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40 rounded transition-colors cursor-pointer"
+                                title={t.downloadPowerpoint}
+                              >
+                                <Presentation className="w-4 h-4" />
+                              </button>
+                            )}
+                          </>
                         ) : (
                           <span
                             className="p-1.5 text-stone-400 cursor-not-allowed"
@@ -198,6 +253,7 @@ export const PdfGrid: React.FC<PdfGridProps> = ({
           onViewInline={onViewInline}
           onOpenNewTab={onOpenNewTab}
           onDownload={onDownload}
+          onDownloadPowerpoint={onDownloadPowerpoint}
         />
       ))}
     </div>

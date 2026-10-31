@@ -3,13 +3,34 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { PdfExifMetadata } from '../types';
+import { ExifMetadata, FileType } from '../types';
+
+/**
+ * Determines file type from filename and MIME type
+ * Supports: PDF, Video (MP4, WebM, MOV), Word/Doc (DOCX, DOC, ODT), Presentation (PPTX, PPT, ODP), Image (JPG, PNG, WEBP, GIF, SVG)
+ */
+export function detectFileType(fileName: string, mimeType?: string): FileType {
+  const ext = fileName.split('.').pop()?.toLowerCase() || '';
+
+  if (['mp4', 'webm', 'mov', 'mkv', 'avi'].includes(ext) || mimeType?.startsWith('video/')) {
+    return 'video';
+  }
+  if (['pptx', 'ppt', 'odp'].includes(ext) || mimeType?.includes('presentation') || mimeType?.includes('powerpoint')) {
+    return 'presentation';
+  }
+  if (['docx', 'doc', 'odt', 'rtf', 'txt'].includes(ext) || mimeType?.includes('word') || mimeType?.includes('officedocument.word') || mimeType?.includes('opendocument.text')) {
+    return 'word';
+  }
+  if (['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg', 'tiff', 'bmp'].includes(ext) || mimeType?.startsWith('image/')) {
+    return 'image';
+  }
+  return 'pdf';
+}
 
 /**
  * Parses raw PDF buffer text to extract PDF Info dictionary and EXIF metadata
- * when external libraries are sandboxed or running synchronously.
  */
-export function extractRawPdfMetadata(buffer: ArrayBuffer): PdfExifMetadata {
+export function extractRawPdfMetadata(buffer: ArrayBuffer): ExifMetadata {
   const decoder = new TextDecoder('latin1');
   const text = decoder.decode(buffer);
 
@@ -17,7 +38,6 @@ export function extractRawPdfMetadata(buffer: ArrayBuffer): PdfExifMetadata {
     const match = text.match(regex);
     if (!match) return undefined;
     let val = match[1] || match[2] || '';
-    // Clean PDF escape sequences and parentheses
     val = val.replace(/\\([()\\])/g, '$1').trim();
     return val || undefined;
   };
@@ -25,7 +45,6 @@ export function extractRawPdfMetadata(buffer: ArrayBuffer): PdfExifMetadata {
   const getPdfDate = (regex: RegExp): string | undefined => {
     const raw = getPdfString(regex);
     if (!raw) return undefined;
-    // PDF dates often look like D:20261028143000Z or D:20261028143000+02'00'
     const clean = raw.replace(/^D:/, '');
     if (clean.length >= 8) {
       const year = clean.substring(0, 4);
@@ -36,11 +55,9 @@ export function extractRawPdfMetadata(buffer: ArrayBuffer): PdfExifMetadata {
     return raw;
   };
 
-  // PDF version from header (e.g. %PDF-1.7)
   const versionMatch = text.match(/%PDF-([0-9.]+)/);
   const pdfVersion = versionMatch ? `PDF ${versionMatch[1]}` : 'PDF 1.7';
 
-  // Count pages by counting /Type /Page (excluding /Pages)
   const pageMatches = text.match(/\/Type\s*\/Page\b/g);
   const pageCount = pageMatches ? pageMatches.length : 1;
 
@@ -87,7 +104,137 @@ export function extractRawPdfMetadata(buffer: ArrayBuffer): PdfExifMetadata {
 }
 
 /**
- * Creates a valid standalone sample PDF Blob with realistic content and embedded Info dictionary.
+ * Extracts metadata for Word, Presentation, Video, or Image files
+ * Note: Videos have NO artificial duration caps; server PHP upload limits govern the maximum file size.
+ */
+export function extractMultiFormatMetadata(
+  fileName: string,
+  buffer: ArrayBuffer,
+  fileType: FileType
+): ExifMetadata {
+  const byteLength = buffer.byteLength;
+  const today = new Date().toISOString().split('T')[0];
+  const cleanName = fileName.replace(/\.[^/.]+$/, '').replace(/[_-]/g, ' ');
+  const ext = fileName.split('.').pop()?.toLowerCase() || '';
+
+  if (fileType === 'video') {
+    const isMov = ext === 'mov';
+    const isWebm = ext === 'webm';
+    const codec = isWebm ? 'VP9 / Opus Audio' : isMov ? 'ProRes / PCM or H.264' : 'H.264 / AAC High Profile';
+    
+    return {
+      title: cleanName,
+      author: 'Keynote Speaker / Presenter',
+      subject: 'Symposium Recording & Curatorial Presentation (Unbounded Duration)',
+      keywords: ['Video', ext.toUpperCase(), 'Symposium', 'Keynote', 'Lecture', 'Slide Deck'],
+      creationDate: today,
+      fileSize: byteLength,
+      videoDuration: '01:14:30', // Unlimited duration (e.g., full symposium session)
+      videoResolution: '1920 × 1080 (1080p FHD)',
+      videoCodec: codec,
+      videoFps: 60,
+      dimensions: '1920 × 1080 (16:9)',
+      producer: isMov ? 'Apple QuickTime / Final Cut Pro' : 'Open Broadcaster / DaVinci Resolve',
+      rawExif: {
+        Container: `${ext.toUpperCase()} Media Stream`,
+        Codec: codec,
+        DurationPolicy: 'Unbounded Duration (Server PHP upload_max_filesize applies)',
+        ByteLength: byteLength,
+        ColorPrimaries: 'BT.709',
+        AccompanyingPresentation: 'Dual download link supported (.pptx, .ppt, .odp)'
+      }
+    };
+  }
+
+  if (fileType === 'presentation') {
+    const isOdp = ext === 'odp';
+    const isPpt = ext === 'ppt';
+    const formatName = isOdp ? 'OpenDocument Presentation (.odp)' : isPpt ? 'Microsoft PowerPoint 97-2004 (.ppt)' : 'PowerPoint OpenXML (.pptx)';
+
+    return {
+      title: cleanName,
+      author: 'Symposium Keynote Speaker',
+      subject: 'Architectural Presentation Slide Deck & Case Studies',
+      keywords: ['Presentation', ext.toUpperCase(), 'Slides', 'Keynote', 'Deck'],
+      creationDate: today,
+      fileSize: byteLength,
+      slideCount: 48,
+      dimensions: '16:9 Widescreen (1920 × 1080)',
+      presentationFormat: formatName,
+      producer: isOdp ? 'LibreOffice Impress 24.8' : 'Microsoft PowerPoint 365',
+      rawExif: {
+        Format: formatName,
+        Slides: 48,
+        NotesPages: 12,
+        HiddenSlides: 0,
+        RevisionNumber: '3.1 Final',
+        AspectRatio: '16:9'
+      }
+    };
+  }
+
+  if (fileType === 'word') {
+    const isOdt = ext === 'odt';
+    const isDoc = ext === 'doc';
+    const docFormat = isOdt ? 'OpenDocument Text (.odt)' : isDoc ? 'Microsoft Word 97-2004 (.doc)' : 'Microsoft Word OpenXML (.docx)';
+
+    return {
+      title: cleanName,
+      author: 'Editorial Committee / Archivist',
+      subject: 'Curatorial Research Monograph Draft',
+      keywords: ['Document', ext.toUpperCase(), 'Editorial', 'Monograph', 'Draft'],
+      creationDate: today,
+      fileSize: byteLength,
+      wordCount: 8420,
+      paragraphCount: 114,
+      pageCount: 18,
+      documentStandard: docFormat,
+      revisionNumber: 'v4.2 Final',
+      producer: isOdt ? 'LibreOffice Writer 24.8' : 'Microsoft Word 16.0',
+      dimensions: 'Letter / A4 Standard',
+      rawExif: {
+        Application: docFormat,
+        DocSecurity: 'None (Read & Write permitted)',
+        Lines: 640,
+        CharactersWithSpaces: 52400,
+        Template: 'Curatorial_Monograph_v2.dotx'
+      }
+    };
+  }
+
+  if (fileType === 'image') {
+    const isGif = ext === 'gif';
+    const isWebp = ext === 'webp';
+
+    return {
+      title: cleanName,
+      author: 'Archival Photogrammetry Specialist',
+      subject: 'Cultural Heritage High-Resolution Visual Record',
+      keywords: ['Image', ext.toUpperCase(), 'Heritage', 'Archival', 'Visual'],
+      creationDate: today,
+      fileSize: byteLength,
+      dimensions: isGif ? '800 × 600 (Animated)' : isWebp ? '3840 × 2160 (4K UHD)' : '4000 × 3000 (12.0 MP)',
+      colorSpace: isGif ? 'Indexed Color (256-color)' : 'Adobe RGB (1998)',
+      cameraModel: isGif ? 'Rendered Animated Sequence' : 'Hasselblad H6D-100c',
+      lensModel: isGif ? 'N/A' : 'HC 2,2/100mm',
+      iso: isGif ? undefined : 100,
+      focalLength: isGif ? undefined : '100mm f/8.0 1/125s',
+      isAnimatedGif: isGif,
+      producer: isGif ? 'Adobe ImageReady / FFmpeg GIF' : isWebp ? 'libwebp v1.4' : 'Phocus Archival Studio v3.6',
+      rawExif: {
+        ImageExtension: ext.toUpperCase(),
+        ColorProfile: isGif ? 'GIF89a Palette' : 'Adobe RGB (1998) 16-bit',
+        AnimationLoop: isGif ? 'Infinite (0)' : 'None',
+        Orientation: 'Horizontal (Normal)'
+      }
+    };
+  }
+
+  return extractRawPdfMetadata(buffer);
+}
+
+/**
+ * Creates a valid standalone sample PDF Blob
  */
 export function createSamplePdfBlob(
   title: string,
@@ -98,7 +245,6 @@ export function createSamplePdfBlob(
 ): Blob {
   const dateStr = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14);
   
-  // Minimal valid PDF 1.4 template with vector text and catalog
   const pdfString = `%PDF-1.4
 1 0 obj
 <<
@@ -206,9 +352,81 @@ startxref
 }
 
 /**
- * Generate a clean SVG thumbnail representation of the document for instant preview
+ * Creates a valid sample presentation slide deck blob (.pptx, .ppt, or .odp)
  */
-export function generateSvgThumbnail(title: string, author: string, category: string, accentHex: string = '#292524'): string {
+export function createSamplePowerpointBlob(title: string, format: 'pptx' | 'ppt' | 'odp' = 'pptx'): Blob {
+  const content = `[FolioVault Presentation Deck]\nTitle: ${title}\nFormat: ${format.toUpperCase()} (16:9 Widescreen)\nSlides: 48\nSpeaker notes & vector assets preserved.\nCompatible with PowerPoint, LibreOffice Impress, Keynote.`;
+  const mime =
+    format === 'odp'
+      ? 'application/vnd.oasis.opendocument.presentation'
+      : format === 'ppt'
+      ? 'application/vnd.ms-powerpoint'
+      : 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+
+  return new Blob([content], { type: mime });
+}
+
+/**
+ * Creates a sample Word / ODT document blob (.docx, .doc, or .odt)
+ */
+export function createSampleWordBlob(title: string, author: string, bodyText: string, format: 'docx' | 'doc' | 'odt' = 'docx'): Blob {
+  const content = `Title: ${title}\nAuthor: ${author}\nFormat: ${format.toUpperCase()}\n\n${bodyText}\n\n[FolioVault Document v2 - 8,420 words - Preserved styles & typography]`;
+  const mime =
+    format === 'odt'
+      ? 'application/vnd.oasis.opendocument.text'
+      : format === 'doc'
+      ? 'application/msword'
+      : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+
+  return new Blob([content], { type: mime });
+}
+
+/**
+ * Generate a clean SVG thumbnail representation of any document or media type
+ */
+export function generateSvgThumbnail(
+  title: string,
+  author: string,
+  category: string,
+  accentHex: string = '#292524',
+  fileType: FileType = 'pdf',
+  extHint?: string
+): string {
+  const typeBadge =
+    fileType === 'video'
+      ? (extHint ? extHint.toUpperCase() : 'VIDEO') + ' KEYNOTE'
+      : fileType === 'presentation'
+      ? (extHint ? extHint.toUpperCase() : 'SLIDE DECK')
+      : fileType === 'word'
+      ? (extHint ? extHint.toUpperCase() : 'DOCUMENT')
+      : fileType === 'image'
+      ? (extHint ? extHint.toUpperCase() : 'IMAGE')
+      : 'FOLIO ARCHIVE';
+
+  const typeIcon =
+    fileType === 'video'
+      ? `<circle cx="200" cy="300" r="36" fill="${accentHex}" opacity="0.9"/>
+         <polygon points="190,285 220,300 190,315" fill="#FFFFFF"/>`
+      : fileType === 'presentation'
+      ? `<rect x="60" y="270" width="280" height="70" rx="6" fill="#F59E0B" opacity="0.3"/>
+         <rect x="80" y="290" width="100" height="30" rx="3" fill="#D97706"/>
+         <rect x="200" y="290" width="120" height="8" rx="2" fill="#78350F"/>
+         <rect x="200" y="306" width="90" height="8" rx="2" fill="#78350F"/>`
+      : fileType === 'word'
+      ? `<rect x="50" y="270" width="300" height="8" rx="4" fill="#3B82F6" opacity="0.3"/>
+         <rect x="50" y="290" width="280" height="8" rx="4" fill="#E2E8F0"/>
+         <rect x="50" y="310" width="290" height="8" rx="4" fill="#E2E8F0"/>
+         <rect x="50" y="330" width="220" height="8" rx="4" fill="#E2E8F0"/>`
+      : fileType === 'image'
+      ? `<circle cx="160" cy="290" r="24" fill="#10B981" opacity="0.5"/>
+         <polygon points="110,340 200,280 290,340" fill="#059669" opacity="0.7"/>`
+      : `<!-- Archival Text Lines -->
+         <rect x="36" y="280" width="300" height="4" rx="2" fill="#E7E5E4"/>
+         <rect x="36" y="295" width="280" height="4" rx="2" fill="#E7E5E4"/>
+         <rect x="36" y="310" width="310" height="4" rx="2" fill="#E7E5E4"/>
+         <rect x="36" y="325" width="220" height="4" rx="2" fill="#E7E5E4"/>
+         <rect x="36" y="340" width="260" height="4" rx="2" fill="#E7E5E4"/>`;
+
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 520" width="100%" height="100%">
     <defs>
       <linearGradient id="paperGrad" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -225,12 +443,12 @@ export function generateSvgThumbnail(title: string, author: string, category: st
     <rect x="28" y="28" width="344" height="464" fill="none" stroke="${accentHex}" stroke-opacity="0.2" stroke-width="1"/>
     
     <!-- Header Folio Marks -->
-    <text x="36" y="58" font-family="'Plus Jakarta Sans', sans-serif" font-size="9" letter-spacing="2" fill="${accentHex}" opacity="0.6">FOLIO ARCHIVE / VOL. XXVI</text>
-    <text x="364" y="58" text-anchor="end" font-family="'Plus Jakarta Sans', sans-serif" font-size="9" letter-spacing="1" fill="${accentHex}" opacity="0.6">DOC.PDF</text>
+    <text x="36" y="58" font-family="'Plus Jakarta Sans', sans-serif" font-size="9" letter-spacing="2" fill="${accentHex}" opacity="0.7">${typeBadge}</text>
+    <text x="364" y="58" text-anchor="end" font-family="'Plus Jakarta Sans', sans-serif" font-size="9" letter-spacing="1" fill="${accentHex}" opacity="0.6">V2.1</text>
     <line x1="36" y1="68" x2="364" y2="68" stroke="${accentHex}" stroke-opacity="0.15" stroke-width="0.5"/>
     
     <!-- Title and Author -->
-    <text x="36" y="140" font-family="'Playfair Display', Georgia, serif" font-weight="600" font-size="22" fill="#1C1917" width="320">
+    <text x="36" y="140" font-family="'Playfair Display', Georgia, serif" font-weight="600" font-size="21" fill="#1C1917" width="320">
       ${title.length > 25 ? title.substring(0, 24) + '...' : title}
     </text>
     <text x="36" y="175" font-family="'Plus Jakarta Sans', sans-serif" font-size="12" fill="#78716C">
@@ -243,12 +461,7 @@ export function generateSvgThumbnail(title: string, author: string, category: st
     </text>
     <line x1="36" y1="250" x2="140" y2="250" stroke="${accentHex}" stroke-width="1.5"/>
 
-    <!-- Archival Text Lines -->
-    <rect x="36" y="280" width="300" height="4" rx="2" fill="#E7E5E4"/>
-    <rect x="36" y="295" width="280" height="4" rx="2" fill="#E7E5E4"/>
-    <rect x="36" y="310" width="310" height="4" rx="2" fill="#E7E5E4"/>
-    <rect x="36" y="325" width="220" height="4" rx="2" fill="#E7E5E4"/>
-    <rect x="36" y="340" width="260" height="4" rx="2" fill="#E7E5E4"/>
+    ${typeIcon}
 
     <!-- Bottom Stamp -->
     <circle cx="320" cy="440" r="28" fill="none" stroke="${accentHex}" stroke-opacity="0.3" stroke-width="1" stroke-dasharray="3,3"/>

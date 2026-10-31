@@ -21,15 +21,24 @@ import {
   CheckCircle2,
   AlertCircle,
   FileText,
-  Layers,
-  Code,
+  Video,
+  Presentation,
+  FileSpreadsheet,
+  Image as ImageIcon,
   Folder,
   Copy,
-  RefreshCw
+  RefreshCw,
+  FolderTree,
+  Tags
 } from 'lucide-react';
-import { AdminConfig, ExifDisplaySettings, Language, PdfFolder, PdfItem } from '../types';
+import { AdminConfig, ExifDisplaySettings, FileType, Language, MediaItem, PdfFolder } from '../types';
 import { verifyPassword, hashPassword } from '../utils/crypto';
-import { extractRawPdfMetadata, generateSvgThumbnail } from '../utils/pdfExtractor';
+import {
+  detectFileType,
+  extractMultiFormatMetadata,
+  generateSvgThumbnail,
+  createSamplePowerpointBlob
+} from '../utils/pdfExtractor';
 import {
   exportGalleryToYaml,
   importGalleryFromYaml,
@@ -46,10 +55,10 @@ interface AdminModalProps {
   onLogout: () => void;
   language: Language;
   folders: PdfFolder[];
-  items: PdfItem[];
+  items: MediaItem[];
   config: AdminConfig;
   onUpdateFolders: (folders: PdfFolder[]) => void;
-  onUpdateItems: (items: PdfItem[]) => void;
+  onUpdateItems: (items: MediaItem[]) => void;
   onUpdateConfig: (config: AdminConfig) => void;
   onResetCatalog: () => void;
 }
@@ -98,9 +107,23 @@ export const AdminModal: React.FC<AdminModalProps> = ({
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadStatusText, setUploadStatusText] = useState('');
   const [uploadedRecentSummary, setUploadedRecentSummary] = useState<string[]>([]);
+  
+  // Video PowerPoint companion attachment
+  const [attachPptxToVideo, setAttachPptxToVideo] = useState(true);
+
+  // Batch Processing & Folder Ingestion state
+  const [autoCreateFolders, setAutoCreateFolders] = useState<boolean>(true);
+  const [autoTagFromFolders, setAutoTagFromFolders] = useState<boolean>(true);
+  const [isDraggingOver, setIsDraggingOver] = useState<boolean>(false);
+  const [batchStats, setBatchStats] = useState<{ totalFiles: number; totalFolders: number } | null>(null);
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
+  const pptxInputRef = useRef<HTMLInputElement>(null);
   const yamlInputRef = useRef<HTMLInputElement>(null);
+
+  // Currently selected item for attaching PPTX
+  const [targetVideoForPptx, setTargetVideoForPptx] = useState<MediaItem | null>(null);
 
   // PHP Guide copy state
   const [copiedPhp, setCopiedPhp] = useState(false);
@@ -211,10 +234,17 @@ export const AdminModal: React.FC<AdminModalProps> = ({
     onUpdateFolders(reordered);
   };
 
-  // Document Operations
+  // Document & Video Operations
   const handleToggleItemDownload = (itemId: string) => {
     const updated = items.map(i =>
       i.id === itemId ? { ...i, allowDownload: !i.allowDownload } : i
+    );
+    onUpdateItems(updated);
+  };
+
+  const handleToggleItemPptDownload = (itemId: string) => {
+    const updated = items.map(i =>
+      i.id === itemId ? { ...i, allowPowerpointDownload: !(i.allowPowerpointDownload !== false) } : i
     );
     onUpdateItems(updated);
   };
@@ -236,63 +266,305 @@ export const AdminModal: React.FC<AdminModalProps> = ({
     onUpdateItems(reordered);
   };
 
-  // Upload Processing GUI
-  const processUploadedFiles = async (fileList: FileList) => {
-    if (!fileList || fileList.length === 0) return;
-    const targetFolderId = uploadTargetFolder || folders[0]?.id || 'folder-arch';
+  // Attach separate PPTX to a video item
+  const handlePptxFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !targetVideoForPptx) return;
 
-    setIsUploading(true);
-    setUploadProgress(10);
-    setUploadStatusText('Initializing upload transfer and reading binary streams...');
-    setUploadedRecentSummary([]);
+    const url = URL.createObjectURL(file);
+    const updated = items.map(i =>
+      i.id === targetVideoForPptx.id
+        ? {
+            ...i,
+            powerpointUrl: url,
+            powerpointFileName: file.name,
+            powerpointFileSize: file.size,
+            allowPowerpointDownload: true,
+          }
+        : i
+    );
+    onUpdateItems(updated);
+    setTargetVideoForPptx(null);
+  };
 
-    const newItems: PdfItem[] = [];
-    const summaryList: string[] = [];
+  // Batch Processing Item Interface
+  interface BatchUploadItem {
+    file: File;
+    relativePath?: string;
+    folderName?: string;
+    subFolders?: string[];
+  }
 
-    const total = fileList.length;
+  // Recursive directory tree extractor for drag-and-drop supporting multiple folders & files simultaneously
+  const extractFilesFromDataTransfer = async (dataTransfer: DataTransfer): Promise<BatchUploadItem[]> => {
+    const batchList: BatchUploadItem[] = [];
 
-    for (let i = 0; i < total; i++) {
-      const file = fileList[i];
-      if (!file.name.toLowerCase().endsWith('.pdf') && file.type !== 'application/pdf') {
-        continue;
+    // 1. Try webkitGetAsEntry (standard directory traversal across modern browsers)
+    if (dataTransfer.items && dataTransfer.items.length > 0) {
+      const entries: any[] = [];
+      for (let i = 0; i < dataTransfer.items.length; i++) {
+        const item = dataTransfer.items[i];
+        if (item.kind === 'file') {
+          const entry = (item as any).webkitGetAsEntry ? (item as any).webkitGetAsEntry() : null;
+          if (entry) {
+            entries.push(entry);
+          }
+        }
       }
 
-      setUploadProgress(Math.round(((i + 0.3) / total) * 90));
-      setUploadStatusText(`Analyzing ${file.name} (${(file.size / 1024).toFixed(0)} KB)...`);
+      if (entries.length > 0) {
+        const readAllDirectoryEntries = async (dirReader: any): Promise<any[]> => {
+          const allEntries: any[] = [];
+          const readChunk = (): Promise<any[]> =>
+            new Promise((resolve, reject) => dirReader.readEntries(resolve, reject));
+
+          let batch = await readChunk();
+          while (batch && batch.length > 0) {
+            allEntries.push(...batch);
+            batch = await readChunk();
+          }
+          return allEntries;
+        };
+
+        const traverseEntry = async (entry: any, currentPath = ''): Promise<void> => {
+          if (entry.isFile) {
+            const file: File = await new Promise((resolve, reject) => entry.file(resolve, reject));
+            const fullPath = currentPath ? `${currentPath}/${file.name}` : (file.webkitRelativePath || file.name);
+            const parts = fullPath.split('/').filter(Boolean);
+            const folderName = parts.length > 1 ? parts[0] : undefined;
+            const subFolders = parts.length > 1 ? parts.slice(0, -1) : [];
+
+            batchList.push({
+              file,
+              relativePath: fullPath,
+              folderName,
+              subFolders,
+            });
+          } else if (entry.isDirectory) {
+            const nextPath = currentPath ? `${currentPath}/${entry.name}` : entry.name;
+            const dirReader = entry.createReader();
+            const childEntries = await readAllDirectoryEntries(dirReader);
+            for (const child of childEntries) {
+              await traverseEntry(child, nextPath);
+            }
+          }
+        };
+
+        for (const entry of entries) {
+          await traverseEntry(entry);
+        }
+
+        if (batchList.length > 0) {
+          return batchList;
+        }
+      }
+    }
+
+    // 2. Fallback to dataTransfer.files
+    if (dataTransfer.files && dataTransfer.files.length > 0) {
+      for (let i = 0; i < dataTransfer.files.length; i++) {
+        const file = dataTransfer.files[i];
+        const relPath = file.webkitRelativePath || file.name;
+        const parts = relPath.split('/').filter(Boolean);
+        const folderName = parts.length > 1 ? parts[0] : undefined;
+        const subFolders = parts.length > 1 ? parts.slice(0, -1) : [];
+        batchList.push({
+          file,
+          relativePath: relPath,
+          folderName,
+          subFolders,
+        });
+      }
+    }
+
+    return batchList;
+  };
+
+  // Convert FileList from file/folder inputs into batch queue
+  const extractFilesFromFileList = (fileList: FileList): BatchUploadItem[] => {
+    const batchList: BatchUploadItem[] = [];
+    for (let i = 0; i < fileList.length; i++) {
+      const file = fileList[i];
+      const relPath = file.webkitRelativePath || file.name;
+      const parts = relPath.split('/').filter(Boolean);
+      const folderName = parts.length > 1 ? parts[0] : undefined;
+      const subFolders = parts.length > 1 ? parts.slice(0, -1) : [];
+      batchList.push({
+        file,
+        relativePath: relPath,
+        folderName,
+        subFolders,
+      });
+    }
+    return batchList;
+  };
+
+  // Main Batch Processing Ingestion Engine
+  const processBatchFiles = async (batchFiles: BatchUploadItem[]) => {
+    if (!batchFiles || batchFiles.length === 0) return;
+
+    // Filter out OS artifacts (.DS_Store, Thumbs.db, desktop.ini)
+    const validBatch = batchFiles.filter(item => {
+      const name = item.file.name;
+      return !name.startsWith('.') && name !== 'Thumbs.db' && name !== 'desktop.ini';
+    });
+
+    if (validBatch.length === 0) return;
+
+    setIsUploading(true);
+    setUploadProgress(5);
+    setUploadStatusText('Analyzing dropped hierarchy and container formats...');
+    setUploadedRecentSummary([]);
+
+    // Extract unique detected folder names from dragged items
+    const rawFolderNames = validBatch
+      .map(b => b.folderName)
+      .filter((fn): fn is string => Boolean(fn && fn.trim().length > 0));
+    const uniqueFolderNames = Array.from(new Set(rawFolderNames));
+
+    setBatchStats({
+      totalFiles: validBatch.length,
+      totalFolders: uniqueFolderNames.length,
+    });
+
+    const workingFolders = [...folders];
+    const newlyCreatedFolders: PdfFolder[] = [];
+    const folderNameToIdMap = new Map<string, string>();
+
+    // Index existing folders
+    workingFolders.forEach(f => {
+      folderNameToIdMap.set(f.name.toLowerCase().trim(), f.id);
+      folderNameToIdMap.set(f.id, f.id);
+    });
+
+    // Auto-create folders if enabled
+    if (autoCreateFolders && uniqueFolderNames.length > 0) {
+      for (const fName of uniqueFolderNames) {
+        const lowerName = fName.toLowerCase().trim();
+        if (!folderNameToIdMap.has(lowerName)) {
+          const newFolderId = `folder-batch-${Date.now()}-${Math.floor(Math.random() * 100000)}`;
+          const createdFolder: PdfFolder = {
+            id: newFolderId,
+            name: fName,
+            description: `Auto-created collection album from batch import of "${fName}".`,
+            tags: [fName],
+            allowDownload: true,
+            visibleInFrontend: true,
+            order: workingFolders.length + newlyCreatedFolders.length + 1,
+          };
+          workingFolders.push(createdFolder);
+          newlyCreatedFolders.push(createdFolder);
+          folderNameToIdMap.set(lowerName, newFolderId);
+        }
+      }
+
+      if (newlyCreatedFolders.length > 0) {
+        onUpdateFolders(workingFolders);
+      }
+    }
+
+    const defaultFolderId = uploadTargetFolder || folders[0]?.id || 'folder-arch';
+    const newItems: MediaItem[] = [];
+    const summaryList: string[] = [];
+    const total = validBatch.length;
+
+    for (let i = 0; i < total; i++) {
+      const { file, folderName, subFolders } = validBatch[i];
+      const detectedType: FileType = detectFileType(file.name, file.type);
+
+      setUploadProgress(Math.round(5 + ((i + 0.3) / total) * 88));
+      setUploadStatusText(`Batch item ${i + 1}/${total}: Analyzing ${file.name} (${detectedType.toUpperCase()})...`);
 
       const buffer = await file.arrayBuffer();
-      
-      setUploadProgress(Math.round(((i + 0.7) / total) * 90));
-      setUploadStatusText(`Extracting EXIF & XMP dictionary for ${file.name}...`);
 
-      const extractedExif = extractRawPdfMetadata(buffer);
-      const blob = new Blob([buffer], { type: 'application/pdf' });
+      setUploadProgress(Math.round(5 + ((i + 0.7) / total) * 88));
+      setUploadStatusText(`Batch item ${i + 1}/${total}: Extracting EXIF & applying folder tags for ${file.name}...`);
+
+      const extractedExif = extractMultiFormatMetadata(file.name, buffer, detectedType);
+      const blob = new Blob([buffer], { type: file.type || 'application/octet-stream' });
       const objectUrl = URL.createObjectURL(blob);
 
-      const title = extractedExif.title || file.name.replace(/\.pdf$/i, '');
+      const title = extractedExif.title || file.name.replace(/\.[^/.]+$/, '');
       const author = extractedExif.author || 'Archive Contributor';
-      const thumbnail = generateSvgThumbnail(title, author, 'Curatorial Document', '#292524');
+      const thumbnail = generateSvgThumbnail(title, author, detectedType.toUpperCase(), '#292524', detectedType);
 
-      const newItem: PdfItem = {
-        id: `pdf-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+      // Determine folder ID for this item
+      let assignedFolderId = defaultFolderId;
+      let assignedFolderName = workingFolders.find(f => f.id === defaultFolderId)?.name || 'Default Collection';
+
+      if (folderName) {
+        const lower = folderName.toLowerCase().trim();
+        if (folderNameToIdMap.has(lower)) {
+          assignedFolderId = folderNameToIdMap.get(lower)!;
+          assignedFolderName = folderName;
+        }
+      }
+
+      // Auto-tagging logic: Merge EXIF keywords with folder and subfolder names
+      const tagSet = new Set<string>();
+
+      if (extractedExif.keywords && extractedExif.keywords.length > 0) {
+        extractedExif.keywords.forEach(k => tagSet.add(k));
+      } else {
+        tagSet.add(detectedType.toUpperCase());
+        tagSet.add('Uploaded');
+      }
+
+      if (autoTagFromFolders) {
+        if (folderName) {
+          tagSet.add(folderName);
+        }
+        if (subFolders && subFolders.length > 0) {
+          subFolders.forEach(sf => {
+            if (sf.trim()) tagSet.add(sf.trim());
+          });
+        }
+      }
+
+      const finalTags = Array.from(tagSet);
+
+      let pptUrl: string | undefined = undefined;
+      let pptName: string | undefined = undefined;
+      let pptSize: number | undefined = undefined;
+
+      // If video file and auto-attachment is enabled: generate paired presentation deck
+      if (detectedType === 'video' && attachPptxToVideo) {
+        const pptBlob = createSamplePowerpointBlob(title);
+        pptUrl = URL.createObjectURL(pptBlob);
+        pptName = `${file.name.replace(/\.[^/.]+$/, '')}_Presentation_Deck.pptx`;
+        pptSize = 12582912;
+      }
+
+      const newItem: MediaItem = {
+        id: `media-${Date.now()}-${Math.floor(Math.random() * 100000)}`,
         name: file.name,
         originalFileName: file.name,
-        folderId: targetFolderId,
-        tags: extractedExif.keywords && extractedExif.keywords.length > 0
-          ? extractedExif.keywords
-          : ['Uploaded', 'PDF'],
+        fileType: detectedType,
+        folderId: assignedFolderId,
+        tags: finalTags,
         uploadDate: new Date().toISOString(),
         fileSize: file.size,
         allowDownload: true,
         url: objectUrl,
         thumbnailUrl: thumbnail,
-        exif: extractedExif,
+        exif: {
+          ...extractedExif,
+          keywords: finalTags,
+        },
         order: items.length + newItems.length + 1,
-        summary: extractedExif.subject || `Archival document uploaded on ${new Date().toLocaleDateString()}. EXIF metadata preserved.`,
+        summary: extractedExif.subject || `${detectedType.toUpperCase()} file uploaded on ${new Date().toLocaleDateString()}. EXIF retained.`,
+        powerpointUrl: pptUrl,
+        powerpointFileName: pptName,
+        powerpointFileSize: pptSize,
+        allowPowerpointDownload: true,
       };
 
       newItems.push(newItem);
-      summaryList.push(`${file.name} · EXIF Title: "${title}" · ${extractedExif.pageCount} pgs`);
+      summaryList.push(
+        `${file.name} [${detectedType.toUpperCase()}] → Folder: "${assignedFolderName}" · Tags: [${finalTags.join(', ')}] ${
+          detectedType === 'video' && pptName ? '· (Paired Presentation Deck attached)' : ''
+        }`
+      );
     }
 
     setUploadProgress(100);
@@ -302,7 +574,13 @@ export const AdminModal: React.FC<AdminModalProps> = ({
 
     setTimeout(() => {
       setIsUploading(false);
-    }, 1200);
+    }, 1500);
+  };
+
+  // Compatibility helper for single FileList
+  const processUploadedFiles = async (fileList: FileList) => {
+    const batch = extractFilesFromFileList(fileList);
+    await processBatchFiles(batch);
   };
 
   // EXIF Governance Toggle
@@ -324,7 +602,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `foliovault-settings-${new Date().toISOString().split('T')[0]}.yaml`;
+    link.download = `foliovault-v2-settings-${new Date().toISOString().split('T')[0]}.yaml`;
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -340,7 +618,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
         const text = event.target?.result as string;
         const result = importGalleryFromYaml(text);
         if (result.folders) onUpdateFolders(result.folders);
-        if (result.items) onUpdateItems(result.items as PdfItem[]);
+        if (result.items) onUpdateItems(result.items as MediaItem[]);
         if (result.settings) {
           onUpdateConfig({ ...config, ...result.settings });
         }
@@ -359,7 +637,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `foliovault-standalone-archive.html`;
+    link.download = `foliovault-v2-standalone-archive.html`;
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -382,9 +660,12 @@ export const AdminModal: React.FC<AdminModalProps> = ({
               {isAdmin ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
             </div>
             <div>
-              <h2 className="text-base font-serif font-medium text-stone-900 dark:text-stone-100">
-                {isAdmin ? t.adminDashboardTitle : t.adminPortal}
-              </h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-serif font-medium text-stone-900 dark:text-stone-100">
+                  {isAdmin ? t.adminDashboardTitle : t.adminPortal}
+                </h2>
+                <span className="text-[10px] bg-stone-200 dark:bg-stone-800 px-2 py-0.5 rounded font-mono font-semibold">v2.0</span>
+              </div>
               <p className="text-xs text-stone-500">
                 {isAdmin ? t.adminUnlocked : t.hashEncryptionNote}
               </p>
@@ -402,7 +683,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
         {/* Modal Content */}
         {!isAdmin ? (
           
-          /* LOGIN SCREEN: ENCRYPTED PASSWORD CHECK */
+          /* LOGIN SCREEN */
           <div className="p-8 max-w-md mx-auto my-auto w-full space-y-6">
             <div className="text-center space-y-2">
               <KeyRound className="w-8 h-8 text-stone-700 dark:text-stone-300 mx-auto stroke-[1.5]" />
@@ -554,7 +835,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                             required
                             value={newFolderName}
                             onChange={(e) => setNewFolderName(e.target.value)}
-                            placeholder="e.g. Rare Maps & Cartography"
+                            placeholder="e.g. Video Keynotes & Symposia"
                             className="w-full px-3 py-1.5 text-xs bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded"
                           />
                         </div>
@@ -566,7 +847,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                             type="text"
                             value={newFolderTags}
                             onChange={(e) => setNewFolderTags(e.target.value)}
-                            placeholder="Maps, Cartography, Facsimile"
+                            placeholder="Video, Keynote, Presentations"
                             className="w-full px-3 py-1.5 text-xs bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded"
                           />
                         </div>
@@ -615,7 +896,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                     </form>
                   )}
 
-                  {/* Folders List with Re-order & Permissions */}
+                  {/* Folders List */}
                   <div className="divide-y divide-stone-200 dark:divide-stone-800 border border-stone-200 dark:border-stone-800 rounded-lg overflow-hidden bg-white dark:bg-stone-900">
                     {folders.map((folder, index) => {
                       const count = items.filter(i => i.folderId === folder.id).length;
@@ -623,7 +904,6 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                       return (
                         <div key={folder.id} className="p-3.5 flex items-center justify-between gap-4">
                           <div className="flex items-center gap-3 min-w-0">
-                            {/* Reorder Buttons */}
                             <div className="flex flex-col gap-0.5 shrink-0">
                               <button
                                 onClick={() => handleMoveFolder(index, 'up')}
@@ -658,10 +938,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                             </div>
                           </div>
 
-                          {/* Folder Controls */}
                           <div className="flex items-center gap-3 shrink-0">
-                            
-                            {/* Visibility in Frontend Toggle */}
                             <button
                               onClick={() => handleToggleFolderVisibility(folder.id)}
                               className={`px-2.5 py-1 text-xs rounded border flex items-center gap-1.5 transition-colors cursor-pointer ${
@@ -675,7 +952,6 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                               <span className="text-[11px]">{folder.visibleInFrontend ? 'Visible' : 'Hidden'}</span>
                             </button>
 
-                            {/* Download Permission Toggle */}
                             <button
                               onClick={() => handleToggleFolderDownload(folder.id)}
                               className={`px-2.5 py-1 text-xs rounded border flex items-center gap-1.5 transition-colors cursor-pointer ${
@@ -689,7 +965,6 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                               <span className="text-[11px]">{folder.allowDownload ? 'Download ON' : 'Download OFF'}</span>
                             </button>
 
-                            {/* Delete Folder */}
                             <button
                               onClick={() => handleDeleteFolder(folder.id)}
                               className="p-1.5 text-stone-400 hover:text-red-600 transition-colors cursor-pointer"
@@ -703,72 +978,111 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                     })}
                   </div>
 
-                  {/* Documents Rearrange and Delete */}
+                  {/* Multi-Format Media Rearrange and PowerPoint link manager */}
                   <div className="pt-4 space-y-3">
                     <h5 className="text-xs font-semibold text-stone-700 dark:text-stone-300 uppercase tracking-wider">
-                      Document Ordering & Permissions ({items.length} items)
+                      Media Ordering & Dual Download Setup ({items.length} items)
                     </h5>
 
-                    <div className="divide-y divide-stone-100 dark:divide-stone-800 border border-stone-200 dark:border-stone-800 rounded-lg max-h-60 overflow-y-auto bg-white dark:bg-stone-900 text-xs">
-                      {items.map((item, index) => (
-                        <div key={item.id} className="p-2.5 flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <div className="flex flex-col shrink-0">
-                              <button
-                                onClick={() => handleMoveItem(index, 'up')}
-                                disabled={index === 0}
-                                className="text-stone-400 hover:text-stone-700 disabled:opacity-20"
-                              >
-                                <ArrowUp className="w-3 h-3" />
-                              </button>
-                              <button
-                                onClick={() => handleMoveItem(index, 'down')}
-                                disabled={index === items.length - 1}
-                                className="text-stone-400 hover:text-stone-700 disabled:opacity-20"
-                              >
-                                <ArrowDown className="w-3 h-3" />
-                              </button>
+                    <div className="divide-y divide-stone-100 dark:divide-stone-800 border border-stone-200 dark:border-stone-800 rounded-lg max-h-72 overflow-y-auto bg-white dark:bg-stone-900 text-xs">
+                      {items.map((item, index) => {
+                        const isVideo = item.fileType === 'video';
+
+                        return (
+                          <div key={item.id} className="p-3 flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <div className="flex flex-col shrink-0">
+                                <button
+                                  onClick={() => handleMoveItem(index, 'up')}
+                                  disabled={index === 0}
+                                  className="text-stone-400 hover:text-stone-700 disabled:opacity-20"
+                                >
+                                  <ArrowUp className="w-3 h-3" />
+                                </button>
+                                <button
+                                  onClick={() => handleMoveItem(index, 'down')}
+                                  disabled={index === items.length - 1}
+                                  className="text-stone-400 hover:text-stone-700 disabled:opacity-20"
+                                >
+                                  <ArrowDown className="w-3 h-3" />
+                                </button>
+                              </div>
+
+                              <div className="min-w-0">
+                                <div className="font-medium truncate text-stone-800 dark:text-stone-200 flex items-center gap-2">
+                                  <span className="font-mono text-[10px] uppercase font-bold text-stone-500 border border-stone-200 dark:border-stone-700 px-1 py-0.2 rounded">
+                                    {item.fileType}
+                                  </span>
+                                  <span className="truncate">{item.exif.title || item.name}</span>
+                                </div>
+                                <div className="text-[11px] text-stone-400 truncate flex items-center gap-2 mt-0.5">
+                                  <span>{item.originalFileName}</span>
+                                  {isVideo && (
+                                    <>
+                                      <span>·</span>
+                                      <span className="text-amber-600 dark:text-amber-400 font-medium">
+                                        PPT: {item.powerpointFileName || 'No slide deck linked'}
+                                      </span>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
                             </div>
 
-                            <div className="min-w-0">
-                              <div className="font-medium truncate text-stone-800 dark:text-stone-200">
-                                {item.exif.title || item.name}
-                              </div>
-                              <div className="text-[11px] text-stone-400 truncate">
-                                {item.originalFileName} · {item.exif.author || 'Anonymous'}
-                              </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              {/* If video: button to attach/replace PowerPoint presentation */}
+                              {isVideo && (
+                                <button
+                                  onClick={() => {
+                                    setTargetVideoForPptx(item);
+                                    pptxInputRef.current?.click();
+                                  }}
+                                  className="text-[11px] px-2 py-0.5 rounded border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300 hover:bg-amber-100 transition-colors cursor-pointer flex items-center gap-1"
+                                  title="Attach or replace original PowerPoint slide deck"
+                                >
+                                  <Presentation className="w-3 h-3" />
+                                  <span>{item.powerpointFileName ? 'Change PPT' : '+ PPT Deck'}</span>
+                                </button>
+                              )}
+
+                              <button
+                                onClick={() => handleToggleItemDownload(item.id)}
+                                className={`text-[11px] px-2 py-0.5 rounded border transition-colors cursor-pointer ${
+                                  item.allowDownload
+                                    ? 'bg-stone-50 border-stone-200 text-stone-600 dark:bg-stone-800 dark:text-stone-300 dark:border-stone-700'
+                                    : 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800'
+                                }`}
+                              >
+                                {item.allowDownload ? 'Download ON' : 'Download OFF'}
+                              </button>
+
+                              <button
+                                onClick={() => handleDeleteItem(item.id)}
+                                className="text-stone-400 hover:text-red-600 p-1 cursor-pointer"
+                                title="Delete"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
                             </div>
                           </div>
-
-                          <div className="flex items-center gap-2 shrink-0">
-                            <button
-                              onClick={() => handleToggleItemDownload(item.id)}
-                              className={`text-[11px] px-2 py-0.5 rounded border transition-colors cursor-pointer ${
-                                item.allowDownload
-                                  ? 'bg-stone-50 border-stone-200 text-stone-600 dark:bg-stone-800 dark:text-stone-300 dark:border-stone-700'
-                                  : 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800'
-                              }`}
-                            >
-                              {item.allowDownload ? 'Download ON' : 'Download OFF'}
-                            </button>
-
-                            <button
-                              onClick={() => handleDeleteItem(item.id)}
-                              className="text-stone-400 hover:text-red-600 p-1 cursor-pointer"
-                              title="Delete"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </button>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
+
+                    {/* Hidden Presentation Input (PPTX, PPT, ODP) */}
+                    <input
+                      ref={pptxInputRef}
+                      type="file"
+                      accept=".pptx,.ppt,.odp,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.oasis.opendocument.presentation"
+                      onChange={handlePptxFileSelect}
+                      className="hidden"
+                    />
                   </div>
 
                 </div>
               )}
 
-              {/* TAB 2: UPLOAD GUI & PROGRESS */}
+              {/* TAB 2: UPLOAD GUI (MULTI-FORMAT: PDF, WORD, VIDEO, IMAGES) */}
               {activeTab === 'upload' && (
                 <div className="space-y-6">
                   <div>
@@ -776,74 +1090,171 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                       {t.uploadTitle}
                     </h4>
                     <p className="text-xs text-stone-500">
-                      Full GUI folders and files uploader with automatic EXIF/XMP extraction and instant preview generation.
+                      Upload PDF folios, Microsoft Word (.docx), Video recordings (.mp4), and high-resolution images.
                     </p>
                   </div>
 
-                  {/* Target Folder Selector */}
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 bg-stone-50 dark:bg-stone-800/50 rounded-lg border border-stone-200 dark:border-stone-700 text-xs">
-                    <span className="font-medium text-stone-700 dark:text-stone-300 whitespace-nowrap">
-                      {t.uploadFolderSelect}:
-                    </span>
-                    <select
-                      value={uploadTargetFolder}
-                      onChange={(e) => setUploadTargetFolder(e.target.value)}
-                      className="px-3 py-1.5 bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded text-xs font-medium focus:outline-none"
-                    >
-                      {folders.map(f => (
-                        <option key={f.id} value={f.id}>
-                          {f.name}
-                        </option>
-                      ))}
-                    </select>
+                  {/* Target Folder Selector & Video PPT companion option */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-stone-50 dark:bg-stone-800/50 rounded-lg border border-stone-200 dark:border-stone-700 text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-stone-700 dark:text-stone-300 whitespace-nowrap">
+                        {t.uploadFolderSelect}:
+                      </span>
+                      <select
+                        value={uploadTargetFolder}
+                        onChange={(e) => setUploadTargetFolder(e.target.value)}
+                        className="px-3 py-1.5 bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded text-xs font-medium focus:outline-none"
+                      >
+                        {folders.map(f => (
+                          <option key={f.id} value={f.id}>
+                            {f.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <label className="flex items-center gap-2 text-stone-700 dark:text-stone-300 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={attachPptxToVideo}
+                        onChange={(e) => setAttachPptxToVideo(e.target.checked)}
+                        className="rounded"
+                      />
+                      <span>Auto-provision PowerPoint slide deck download for video uploads</span>
+                    </label>
                   </div>
 
-                  {/* Drag and Drop Box */}
+                  {/* Batch Processing & Auto-Tagging Ingestion Panel */}
+                  <div className="p-4 bg-stone-50 dark:bg-stone-800/60 rounded-xl border border-stone-200 dark:border-stone-700 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <FolderTree className="w-4 h-4 text-stone-700 dark:text-stone-300" />
+                        <h5 className="text-xs font-semibold text-stone-900 dark:text-stone-100">
+                          {t.batchProcessingTitle}
+                        </h5>
+                      </div>
+                      {batchStats && (
+                        <div className="text-[11px] font-mono text-stone-500 bg-white dark:bg-stone-900 px-2 py-0.5 rounded border border-stone-200 dark:border-stone-700">
+                          {batchStats.totalFiles} {t.batchItemsDetected} ({batchStats.totalFolders} folders)
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                      <label className="flex items-start gap-2.5 text-stone-700 dark:text-stone-300 cursor-pointer p-2 bg-white dark:bg-stone-900/80 rounded-lg border border-stone-200/80 dark:border-stone-700/80">
+                        <input
+                          type="checkbox"
+                          checked={autoCreateFolders}
+                          onChange={(e) => setAutoCreateFolders(e.target.checked)}
+                          className="rounded mt-0.5"
+                        />
+                        <div>
+                          <span className="font-medium text-[11px] block text-stone-900 dark:text-stone-100">
+                            {t.autoCreateFoldersToggle}
+                          </span>
+                          <span className="text-[10px] text-stone-500">
+                            Detects parent directories and automatically provisions matching albums.
+                          </span>
+                        </div>
+                      </label>
+
+                      <label className="flex items-start gap-2.5 text-stone-700 dark:text-stone-300 cursor-pointer p-2 bg-white dark:bg-stone-900/80 rounded-lg border border-stone-200/80 dark:border-stone-700/80">
+                        <input
+                          type="checkbox"
+                          checked={autoTagFromFolders}
+                          onChange={(e) => setAutoTagFromFolders(e.target.checked)}
+                          className="rounded mt-0.5"
+                        />
+                        <div>
+                          <span className="font-medium text-[11px] block text-stone-900 dark:text-stone-100">
+                            {t.autoTaggingToggle}
+                          </span>
+                          <span className="text-[10px] text-stone-500">
+                            {t.autoTagFolderNotice}
+                          </span>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Drag and Drop Box with Multi-Folder Tree Support */}
                   <div
-                    onDragOver={(e) => e.preventDefault()}
-                    onDrop={(e) => {
+                    onDragOver={(e) => {
                       e.preventDefault();
-                      if (e.dataTransfer.files) {
-                        processUploadedFiles(e.dataTransfer.files);
+                      setIsDraggingOver(true);
+                    }}
+                    onDragEnter={(e) => {
+                      e.preventDefault();
+                      setIsDraggingOver(true);
+                    }}
+                    onDragLeave={() => setIsDraggingOver(false)}
+                    onDrop={async (e) => {
+                      e.preventDefault();
+                      setIsDraggingOver(false);
+                      const batch = await extractFilesFromDataTransfer(e.dataTransfer);
+                      if (batch.length > 0) {
+                        processBatchFiles(batch);
                       }
                     }}
-                    className="border-2 border-dashed border-stone-300 dark:border-stone-700 hover:border-stone-500 dark:hover:border-stone-500 rounded-xl p-8 text-center space-y-4 bg-stone-50/50 dark:bg-stone-900/50 transition-colors"
+                    className={`border-2 border-dashed rounded-xl p-8 text-center space-y-4 transition-all duration-200 ${
+                      isDraggingOver
+                        ? 'border-stone-900 dark:border-stone-100 bg-stone-100 dark:bg-stone-800 ring-2 ring-stone-900/20'
+                        : 'border-stone-300 dark:border-stone-700 hover:border-stone-500 dark:hover:border-stone-500 bg-stone-50/50 dark:bg-stone-900/50'
+                    }`}
                   >
-                    <Upload className="w-10 h-10 text-stone-400 mx-auto stroke-[1.2]" />
+                    <div className="relative inline-block">
+                      <Upload className="w-10 h-10 text-stone-400 mx-auto stroke-[1.2]" />
+                      {autoTagFromFolders && (
+                        <Tags className="w-4 h-4 text-stone-600 dark:text-stone-300 absolute -bottom-1 -right-1 bg-white dark:bg-stone-900 rounded-full p-0.5 border border-stone-200 dark:border-stone-700" />
+                      )}
+                    </div>
+
                     <div>
                       <p className="text-xs font-medium text-stone-800 dark:text-stone-200">
                         {t.uploadDragDrop}
                       </p>
-                      <p className="text-[11px] text-stone-400 mt-1">
-                        Supports single PDFs, multiple files, or directory trees. EXIF retained.
+                      <p className="text-[11px] text-stone-500 mt-1">
+                        Drop multiple files or entire folder trees at once. Auto-tags items and creates collection albums.
+                      </p>
+                      <p className="text-[10px] text-stone-400 mt-0.5">
+                        Supported: PDF, DOCX, DOC, ODT, MP4, WEBM, MOV, PPTX, PPT, ODP, JPG, PNG, WEBP, GIF.
                       </p>
                     </div>
 
                     <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
                       <button
+                        type="button"
                         onClick={() => fileInputRef.current?.click()}
                         disabled={isUploading}
-                        className="px-4 py-2 bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 text-xs font-semibold rounded shadow-xs hover:opacity-90 transition-opacity cursor-pointer"
+                        className="px-4 py-2 bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 text-xs font-semibold rounded shadow-xs hover:opacity-90 transition-opacity cursor-pointer flex items-center gap-1.5"
                       >
-                        {t.uploadSelectFiles}
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>{t.uploadSelectFiles}</span>
                       </button>
 
                       <button
+                        type="button"
                         onClick={() => folderInputRef.current?.click()}
                         disabled={isUploading}
-                        className="px-4 py-2 bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 text-stone-800 dark:text-stone-200 text-xs font-semibold rounded shadow-xs hover:bg-stone-50 dark:hover:bg-stone-700 transition-colors cursor-pointer"
+                        className="px-4 py-2 bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 text-stone-800 dark:text-stone-200 text-xs font-semibold rounded shadow-xs hover:bg-stone-50 dark:hover:bg-stone-700 transition-colors cursor-pointer flex items-center gap-1.5"
                       >
-                        {t.uploadSelectFolder}
+                        <FolderTree className="w-3.5 h-3.5" />
+                        <span>{t.uploadSelectFolder}</span>
                       </button>
                     </div>
 
-                    {/* Hidden Native File Inputs */}
                     <input
                       ref={fileInputRef}
                       type="file"
                       multiple
-                      accept="application/pdf,.pdf"
-                      onChange={(e) => e.target.files && processUploadedFiles(e.target.files)}
+                      accept="application/pdf,.pdf,video/mp4,.mp4,.webm,.mov,.docx,.doc,.odt,.pptx,.ppt,.odp,image/*,.jpg,.jpeg,.png,.webp,.gif"
+                      onChange={(e) => {
+                        if (e.target.files) {
+                          const batch = extractFilesFromFileList(e.target.files);
+                          processBatchFiles(batch);
+                          e.target.value = '';
+                        }
+                      }}
                       className="hidden"
                     />
                     <input
@@ -853,7 +1264,13 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                       webkitdirectory=""
                       directory=""
                       multiple
-                      onChange={(e) => e.target.files && processUploadedFiles(e.target.files)}
+                      onChange={(e) => {
+                        if (e.target.files) {
+                          const batch = extractFilesFromFileList(e.target.files);
+                          processBatchFiles(batch);
+                          e.target.value = '';
+                        }
+                      }}
                       className="hidden"
                     />
                   </div>
@@ -901,7 +1318,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                 </div>
               )}
 
-              {/* TAB 3: EXIF GOVERNANCE */}
+              {/* TAB 3: EXIF & METADATA GOVERNANCE */}
               {activeTab === 'exif' && (
                 <div className="space-y-6">
                   <div>
@@ -915,16 +1332,16 @@ export const AdminModal: React.FC<AdminModalProps> = ({
 
                   <div className="border border-stone-200 dark:border-stone-800 rounded-lg divide-y divide-stone-100 dark:divide-stone-800 bg-white dark:bg-stone-900">
                     {[
-                      { key: 'showTitle', label: t.fieldTitle, desc: 'Original /Title tag from PDF dictionary' },
-                      { key: 'showAuthor', label: t.fieldAuthor, desc: 'Author, contributors, and institution credits' },
-                      { key: 'showSubject', label: t.fieldSubject, desc: 'Abstract, catalog categorization, and monograph subject' },
-                      { key: 'showKeywords', label: t.fieldKeywords, desc: 'Index tags and topical descriptors' },
-                      { key: 'showCreationDate', label: t.fieldCreationDate, desc: 'Creation date extracted from PDF header /CreationDate' },
-                      { key: 'showPageCount', label: t.fieldPageCount, desc: 'Calculated page count from internal object trees' },
-                      { key: 'showProducer', label: t.fieldProducer, desc: 'Creator software, RIP engine, and typesetting tools' },
+                      { key: 'showTitle', label: t.fieldTitle, desc: 'Original title tag from document or video header' },
+                      { key: 'showAuthor', label: t.fieldAuthor, desc: 'Author, presenter, and director credits' },
+                      { key: 'showSubject', label: t.fieldSubject, desc: 'Abstract, keynote summary, or thesis topic' },
+                      { key: 'showKeywords', label: t.fieldKeywords, desc: 'Tags and index terms' },
+                      { key: 'showVideoDuration', label: t.fieldVideoDuration, desc: 'Running time for video keynote recordings' },
+                      { key: 'showWordCount', label: t.fieldWordCount, desc: 'Word and paragraph count for Word manuscripts' },
+                      { key: 'showCreationDate', label: t.fieldCreationDate, desc: 'Original creation date extracted from metadata' },
+                      { key: 'showPageCount', label: t.fieldPageCount, desc: 'Page count for PDF folios and Word monographs' },
                       { key: 'showFileSize', label: t.fieldFileSize, desc: 'Precise byte length and megabyte representation' },
-                      { key: 'showPdfVersion', label: t.fieldPdfVersion, desc: 'PDF specification standard (e.g. PDF 1.7, PDF/A-1b)' },
-                      { key: 'showDimensions', label: t.fieldDimensions, desc: 'MediaBox geometric proportions (e.g. A4, Quarto, Folio)' },
+                      { key: 'showDimensions', label: t.fieldDimensions, desc: 'Resolution for videos/images and format for folios' },
                     ].map((row) => {
                       const isEnabled = config.exifSettings[row.key as keyof ExifDisplaySettings];
 
@@ -954,12 +1371,6 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                       );
                     })}
                   </div>
-
-                  <div className="p-3 bg-stone-50 dark:bg-stone-800/40 border border-stone-200 dark:border-stone-800 rounded text-xs text-stone-600 dark:text-stone-400">
-                    <span className="font-semibold block text-stone-800 dark:text-stone-200">Admin Inspection Guarantee:</span>
-                    As an administrator, you will always inspect the complete raw EXIF dictionary inside the inline reader, regardless of frontend public visibility settings.
-                  </div>
-
                 </div>
               )}
 
@@ -975,7 +1386,6 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                     </p>
                   </div>
 
-                  {/* Current Hash Display */}
                   <div className="p-4 bg-stone-50 dark:bg-stone-800/50 rounded-lg border border-stone-200 dark:border-stone-700 space-y-2 text-xs">
                     <div className="font-medium text-stone-700 dark:text-stone-300">
                       Active SHA-256 Encrypted Hash:
@@ -983,12 +1393,8 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                     <code className="text-[11px] font-mono break-all block bg-white dark:bg-stone-900 p-2.5 rounded border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400">
                       {config.passwordHash}
                     </code>
-                    <div className="text-[11px] text-stone-400">
-                      Salt: <span className="font-mono">{config.salt}</span>
-                    </div>
                   </div>
 
-                  {/* Change Password Form */}
                   <form onSubmit={handlePasswordChange} className="max-w-md space-y-4">
                     <div>
                       <label className="text-xs font-medium text-stone-700 dark:text-stone-300 block mb-1">
@@ -1035,7 +1441,6 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                       {t.savePassword}
                     </button>
                   </form>
-
                 </div>
               )}
 
@@ -1052,14 +1457,12 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    
-                    {/* YAML Export & Import */}
                     <div className="p-4 bg-stone-50 dark:bg-stone-800/40 border border-stone-200 dark:border-stone-800 rounded-lg space-y-3">
                       <div className="text-xs font-semibold text-stone-900 dark:text-stone-100">
                         YAML Configuration
                       </div>
                       <p className="text-[11px] text-stone-500">
-                        Export or synchronize your entire catalog and permissions into a standard flat <code>settings.yaml</code> file.
+                        Export or synchronize your entire multi-format catalog into a standard flat <code>settings.yaml</code> file.
                       </p>
 
                       <div className="flex flex-wrap items-center gap-2 pt-2">
@@ -1087,7 +1490,6 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                       </div>
                     </div>
 
-                    {/* Single Standalone HTML Export */}
                     <div className="p-4 bg-stone-50 dark:bg-stone-800/40 border border-stone-200 dark:border-stone-800 rounded-lg space-y-3">
                       <div className="text-xs font-semibold text-stone-900 dark:text-stone-100">
                         {t.exportSingleHtml}
@@ -1101,15 +1503,13 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                           onClick={handleExportSingleHtml}
                           className="px-3.5 py-1.5 bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 text-xs font-medium rounded hover:opacity-90 transition-opacity flex items-center gap-1.5 cursor-pointer"
                         >
-                          <Code className="w-3.5 h-3.5" />
+                          <FileDown className="w-3.5 h-3.5" />
                           <span>Generate Single HTML</span>
                         </button>
                       </div>
                     </div>
-
                   </div>
 
-                  {/* PHP Deployment & Version Documentation */}
                   <div className="p-4 bg-stone-50 dark:bg-stone-800/40 border border-stone-200 dark:border-stone-800 rounded-lg space-y-3">
                     <div className="flex items-center justify-between">
                       <div>
@@ -1117,7 +1517,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                           {t.phpGuideTitle}
                         </div>
                         <div className="text-[11px] text-stone-500 mt-0.5">
-                          Supported Versions: <strong className="text-stone-700 dark:text-stone-300">PHP 8.1, PHP 8.2, and PHP 8.3+</strong> (Zero database, flat directory scanner)
+                          Supported Versions: <strong className="text-stone-700 dark:text-stone-300">PHP 8.1, PHP 8.2, and PHP 8.3+</strong> (Multi-format directory scanner)
                         </div>
                       </div>
 
@@ -1130,23 +1530,18 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                       </button>
                     </div>
 
-                    <p className="text-xs text-stone-600 dark:text-stone-400">
-                      {t.phpGuideContent}
-                    </p>
-
                     <pre className="p-3 bg-stone-950 rounded border border-stone-800 text-[11px] font-mono text-stone-300 overflow-x-auto max-h-40 whitespace-pre">
                       {PHP_SCANNER_GUIDE}
                     </pre>
                   </div>
 
-                  {/* Reset Demo Data */}
                   <div className="pt-4 border-t border-stone-200 dark:border-stone-800 flex items-center justify-between">
                     <div>
                       <span className="text-xs font-semibold text-stone-800 dark:text-stone-200 block">
                         {t.resetDemoData}
                       </span>
                       <span className="text-[11px] text-stone-500">
-                        Restores initial curated samples, architectural monographs, and original EXIF records.
+                        Restores initial sample state with videos, slide decks, Word docs, images, and folios.
                       </span>
                     </div>
 

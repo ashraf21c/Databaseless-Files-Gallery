@@ -3,8 +3,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { AdminConfig, ExifDisplaySettings, PdfFolder, PdfItem } from '../types';
-import { createSamplePdfBlob, generateSvgThumbnail } from './pdfExtractor';
+import { AdminConfig, ExifDisplaySettings, MediaItem, PdfFolder } from '../types';
+import {
+  createSamplePdfBlob,
+  createSamplePowerpointBlob,
+  createSampleWordBlob,
+  generateSvgThumbnail
+} from './pdfExtractor';
 
 export const HERO_IMAGE_URL = '/src/assets/images/gallery_curatorial_hero_1793386273415.jpg';
 export const MONOGRAPH_COVER_URL = '/src/assets/images/sample_document_cover_1793386275184.jpg';
@@ -20,15 +25,17 @@ export const INITIAL_EXIF_SETTINGS: ExifDisplaySettings = {
   showFileSize: true,
   showPdfVersion: false, // hidden in frontend by default, visible in admin
   showDimensions: true,
+  showVideoDuration: true,
+  showWordCount: true,
 };
 
 // Default hashed password for "admin123" with salt "foliovault_salt_2026":
-// Computed via crypto.subtle.digest: "foliovault_salt_2026:admin123" -> sha256
 export const INITIAL_ADMIN_CONFIG: AdminConfig = {
+  version: '2.0.0',
   passwordHash: '8b7fca13f738b55695ef2aeef33b0cfbc92bc4aa4dd38aa4d693be7bf7bfaafc',
   salt: 'foliovault_salt_2026',
-  galleryTitle: 'FolioVault Curatorial Repository',
-  gallerySubtitle: 'Databaseless central repository for verified scholarly, institutional and artistic folios.',
+  galleryTitle: 'FolioVault Central Repository',
+  gallerySubtitle: 'Databaseless central repository for verified scholarly, institutional, and multimedia folios.',
   defaultLanguage: 'en',
   allowGlobalDownloads: true,
   exifSettings: INITIAL_EXIF_SETTINGS,
@@ -38,14 +45,14 @@ export const INITIAL_ADMIN_CONFIG: AdminConfig = {
 export const INITIAL_FOLDERS: PdfFolder[] = [
   {
     id: 'folder-arch',
-    name: 'Architectural Monographs & Heritage',
+    name: 'Architectural Monographs & Keynotes',
     nameTranslations: {
-      en: 'Architectural Monographs & Heritage',
-      ar: 'العمارة والتراث التاريخي',
-      ja: '建築モノグラフと遺産'
+      en: 'Architectural Monographs & Keynotes',
+      ar: 'العمارة والتراث والمحاضرات المرئية',
+      ja: '建築モノグラフと基調講演'
     },
-    description: 'Documentation of historic stone masonry, sacred proportions, and classical treatises.',
-    tags: ['Architecture', 'Monographs', 'Heritage', 'Treatise'],
+    description: 'Documentation of historic stone masonry, classical treatises, and recorded symposium keynotes.',
+    tags: ['Architecture', 'Monographs', 'Heritage', 'Keynote', 'Video'],
     allowDownload: true,
     visibleInFrontend: true,
     order: 1,
@@ -60,7 +67,7 @@ export const INITIAL_FOLDERS: PdfFolder[] = [
       ja: 'キュレーター企画・展覧会図録'
     },
     description: 'Official museum publications, gallery retrospective volumes, and critical essays.',
-    tags: ['Art', 'Museum', 'Exhibition', 'Curatorial'],
+    tags: ['Art', 'Museum', 'Exhibition', 'Curatorial', 'Word'],
     allowDownload: false, // Downloads disabled for exhibition catalogs to test permission!
     visibleInFrontend: true,
     order: 2,
@@ -96,26 +103,170 @@ export const INITIAL_FOLDERS: PdfFolder[] = [
   }
 ];
 
-export function generateInitialItems(): PdfItem[] {
-  const items: PdfItem[] = [
+export function generateInitialItems(): MediaItem[] {
+  const items: MediaItem[] = [
+    // 1. VIDEO ITEM WITH DUAL DOWNLOAD LINKS (Uploaded Video + Original PowerPoint Presentation)
     {
-      id: 'doc-001',
+      id: 'media-001',
+      name: 'Venetian_Palazzos_Keynote_Symposium.mp4',
+      originalFileName: 'Venetian_Palazzos_Keynote_Symposium.mp4',
+      fileType: 'video',
+      folderId: 'folder-arch',
+      tags: ['Architecture', 'Video', 'Keynote', 'Presentation', 'Venice'],
+      uploadDate: '2026-10-28T16:40:00Z',
+      fileSize: 184549376, // 176 MB
+      allowDownload: true,
+      url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4', // sample valid MP4 stream
+      thumbnailUrl: generateSvgThumbnail('Venetian Palazzos Symposium', 'Prof. Matteo Valmarana', 'Architecture', '#78350F', 'video'),
+      summary: 'Recorded keynote lecture on harmonic proportions in Palladian stone facades, delivered at the International Architectural Heritage Symposium. Features synchronized high-definition slides and commentary.',
+      order: 1,
+      powerpointFileName: 'Venetian_Architecture_Keynote_Deck.pptx',
+      powerpointFileSize: 16777216, // 16 MB
+      allowPowerpointDownload: true,
+      exif: {
+        title: 'Venetian Stone Palazzos: Architectural Proportions & Harmonics Keynote',
+        author: 'Prof. Matteo Valmarana (Venice Heritage Chair)',
+        subject: 'Recorded Keynote Lecture with Accompanying Slide Deck',
+        keywords: ['Architecture', 'Video', 'Lecture', 'Palladio', 'Venice', 'Slide Deck', 'Keynote'],
+        creator: 'Sony FX6 4K Cinema Line / Atomos Ninja V+',
+        producer: 'DaVinci Resolve Studio 19 / H.264 Encoder',
+        creationDate: '2026-10-28',
+        fileSize: 184549376,
+        dimensions: '1920 × 1080 (16:9 Full HD)',
+        videoDuration: '34:20',
+        videoResolution: '1080p Full HD (1920x1080)',
+        videoCodec: 'H.264 / High Profile + AAC Stereo 48kHz',
+        videoFps: 60,
+        rawExif: {
+          VideoFormat: 'MPEG-4 Part 14 (.mp4)',
+          MasterResolution: '1920x1080',
+          FrameRate: '59.94 fps Progressive',
+          VideoBitrate: '6.4 Mbps Target',
+          AudioChannels: '2 (Stereo L/R)',
+          AccompanyingSlideDeck: 'Venetian_Architecture_Keynote_Deck.pptx (Available for Dual Download)',
+          SymposiumLocation: 'Scuola Grande di San Rocco, Venice'
+        }
+      }
+    },
+
+    // 2. WORD DOCUMENT ITEM (.docx)
+    {
+      id: 'media-002',
+      name: 'Editorial_Monograph_Text_Critique.docx',
+      originalFileName: 'Silent_Archive_Critical_Review_Draft.docx',
+      fileType: 'word',
+      folderId: 'folder-curator',
+      tags: ['Word', 'Curatorial', 'Editorial', 'Essay', 'Manuscript'],
+      uploadDate: '2026-10-25T11:20:00Z',
+      fileSize: 845200,
+      allowDownload: true,
+      url: '',
+      thumbnailUrl: generateSvgThumbnail('Critical Review & Monograph Draft', 'Dr. Claire St. John', 'Curatorial', '#1E3A8A', 'word'),
+      summary: 'Comprehensive peer-reviewed editorial essay exploring the tactile materiality of black-and-white silver gelatin prints, darkroom techniques, and institutional archiving ethics.',
+      order: 2,
+      wordPreviewText: `THE MATERIALITY OF THE PRINT: AN ESSAY IN ARCHIVAL PHENOMENOLOGY
+
+By Dr. Claire St. John
+Department of Curatorial Studies & Art History
+
+I. THE SURFACING OF MEMORY
+When looking through the portfolio prints of the British avant-garde photographers active between 1965 and 1985, one is immediately struck by the recalcitrant materiality of the photographic paper itself. Before an image can be understood as representation, it exists in space as a physical matrix: fibers of cotton rag, baryta coating, suspended gelatin, and finely atomized colloidal silver.
+
+II. THE LOSS OF THE TACTILE HORIZON
+In modern digital cataloging, this physical presence is frequently subordinated to the screen representation. Yet the blind debossing along the margins—an indentation stamped under three tons of mechanical pressure—testifies to the artisan labor invested into each plate. The archive is not merely an optical index; it is an archaeology of paper, chemical residue, and physical inscription.
+
+III. INSTITUTIONAL ETHICS IN REPRODUCING FACSIMILES
+How do contemporary cultural museums preserve both the intellectual content and the haptic dignity of the folio? The protocols established in this monograph argue for complete metadata fidelity, explicit page dimensioning, and uncompromised surface density.`,
+      exif: {
+        title: 'The Materiality of the Print: An Essay in Archival Phenomenology',
+        author: 'Dr. Claire St. John',
+        subject: 'Contemporary Museum Retrospective Critical Review',
+        keywords: ['Word', 'Essay', 'Curatorial', 'Photography', 'Silver Gelatin', 'Monograph'],
+        creator: 'Microsoft Word for Mac 16.89',
+        producer: 'OpenXML Engine v4.0',
+        creationDate: '2026-10-25',
+        pageCount: 14,
+        wordCount: 7850,
+        paragraphCount: 92,
+        revisionNumber: 'Rev 6.2 (Peer Reviewed)',
+        fileSize: 845200,
+        dimensions: 'A4 Standard (210 × 297 mm)',
+        rawExif: {
+          DocType: 'Word Processing ML Document (.docx)',
+          TotalEditingTime: '420 Minutes',
+          WordsCount: 7850,
+          Paragraphs: 92,
+          Lines: 540,
+          Characters: 48920,
+          Company: 'Institute of Curatorial Research'
+        }
+      }
+    },
+
+    // 3. CURATORIAL HIGH-RES IMAGE ITEM
+    {
+      id: 'media-003',
+      name: 'Curatorial_Archival_Table_Master_Scan.jpg',
+      originalFileName: 'Archival_Table_Research_Leica.jpg',
+      fileType: 'image',
+      folderId: 'folder-arch',
+      tags: ['Image', 'Heritage', 'Photography', 'Archive', 'Folio'],
+      uploadDate: '2026-10-22T09:15:00Z',
+      fileSize: 12582912, // 12 MB
+      allowDownload: true,
+      url: HERO_IMAGE_URL,
+      thumbnailUrl: HERO_IMAGE_URL,
+      summary: 'High-resolution medium format documentation of rare architectural treatises on natural oak examination tables, captured in morning ambient daylight.',
+      order: 3,
+      exif: {
+        title: 'Archival Examination Table: Master Conservation Session',
+        author: 'Elena Rostova (Senior Heritage Photographer)',
+        subject: 'Conservation Photography & Rare Manuscript Inspection',
+        keywords: ['Image', 'Heritage', 'Photography', 'Hasselblad', 'Conservation', 'Leica'],
+        creator: 'Hasselblad H6D-100c Digital Back',
+        producer: 'Phocus Archival Studio v3.6',
+        creationDate: '2026-10-22',
+        fileSize: 12582912,
+        dimensions: '4000 × 2250 (16:9 Ultra HD)',
+        colorSpace: 'Adobe RGB (1998)',
+        cameraModel: 'Hasselblad H6D-100c',
+        lensModel: 'Hasselblad HC 2,2/100mm',
+        iso: 64,
+        focalLength: '100mm f/8.0 1/125s',
+        rawExif: {
+          CameraMake: 'Hasselblad',
+          CameraModel: 'H6D-100c',
+          ShutterSpeed: '1/125 sec',
+          Aperture: 'f/8.0',
+          ISO: 64,
+          FocalLength: '100.0 mm',
+          ColorSpace: 'Adobe RGB (1998)',
+          MeteringMode: 'CenterWeightedAverage',
+          LightSource: 'Natural Daylight'
+        }
+      }
+    },
+
+    // 4. PDF DOCUMENT ITEM (With downloads disabled to demonstrate security permission)
+    {
+      id: 'media-004',
       name: 'The Materiality of the Print & Avant-Garde Photography.pdf',
       originalFileName: 'Silent_Archive_Monograph_1985.pdf',
+      fileType: 'pdf',
       folderId: 'folder-curator',
-      tags: ['Art', 'Museum', 'Photography', 'Monographs'],
+      tags: ['PDF', 'Art', 'Museum', 'Photography', 'Monographs'],
       uploadDate: '2026-10-24T09:15:00Z',
       fileSize: 4280192,
       allowDownload: false, // downloads disabled for this item
       url: '',
       thumbnailUrl: MONOGRAPH_COVER_URL,
       summary: 'A definitive retrospective examining blind-debossed silver gelatin prints and British avant-garde photographic materials between 1965 and 1985.',
-      order: 1,
+      order: 4,
       exif: {
         title: 'The Silent Archive: British Avant-Garde Photography 1965-1985',
         author: 'Elias Thorne',
         subject: 'Contemporary Museum Retrospective Catalog Vol. XIV',
-        keywords: ['Photography', 'Silver Gelatin', 'Curatorial', 'Print Materiality', 'Exhibition'],
+        keywords: ['PDF', 'Photography', 'Silver Gelatin', 'Curatorial', 'Print Materiality', 'Exhibition'],
         creator: 'FolioVault Curatorial Typesetter',
         producer: 'Adobe PDF Library 22.1 / Quadtone Engine',
         creationDate: '2026-04-18',
@@ -136,24 +287,27 @@ export function generateInitialItems(): PdfItem[] {
         }
       }
     },
+
+    // 5. PDF DOCUMENT ITEM
     {
-      id: 'doc-002',
+      id: 'media-005',
       name: 'Palladian Proportions in Venetian Stone Palazzos.pdf',
       originalFileName: 'Venetian_Proportions_Treatise.pdf',
+      fileType: 'pdf',
       folderId: 'folder-arch',
-      tags: ['Architecture', 'Monographs', 'Heritage', 'Venice'],
+      tags: ['PDF', 'Architecture', 'Monographs', 'Heritage', 'Venice'],
       uploadDate: '2026-10-18T14:22:00Z',
       fileSize: 3145728,
       allowDownload: true,
       url: '',
-      thumbnailUrl: generateSvgThumbnail('Palladian Proportions in Stone', 'Matteo Valmarana', 'Architecture', '#78350F'),
+      thumbnailUrl: generateSvgThumbnail('Palladian Proportions in Stone', 'Matteo Valmarana', 'Architecture', '#78350F', 'pdf'),
       summary: 'Measured geometric elevation drawings, portico harmonics, and limestone structural joinery based on classical Renaissance blueprints.',
-      order: 2,
+      order: 5,
       exif: {
         title: 'Palladian Proportions in Venetian Stone Palazzos',
         author: 'Prof. Matteo Valmarana',
         subject: 'Architectural Heritage & Geometric Analysis',
-        keywords: ['Architecture', 'Palladio', 'Venice', 'Geometry', 'Limestone', 'Proportions'],
+        keywords: ['PDF', 'Architecture', 'Palladio', 'Venice', 'Geometry', 'Limestone', 'Proportions'],
         creator: 'AutoCAD Architectural Export 2026',
         producer: 'Harlequin RIP v13.0',
         creationDate: '2026-03-12',
@@ -171,28 +325,30 @@ export function generateInitialItems(): PdfItem[] {
         }
       }
     },
+
+    // 6. PDF DOCUMENT ITEM
     {
-      id: 'doc-003',
+      id: 'media-006',
       name: 'Andalusi Celestial Astrolabes & Meridian Tables.pdf',
       originalFileName: 'Andalusi_Astrolabe_Tables_1380.pdf',
+      fileType: 'pdf',
       folderId: 'folder-manuscripts',
-      tags: ['Manuscripts', 'Astronomy', 'History', 'Folio'],
+      tags: ['PDF', 'Manuscripts', 'Astronomy', 'History', 'Folio'],
       uploadDate: '2026-10-12T11:45:00Z',
       fileSize: 5898240,
       allowDownload: true,
       url: '',
-      thumbnailUrl: generateSvgThumbnail('Andalusi Astrolabe Tables', 'Ibn al-Saffar Facsimile', 'Manuscripts', '#1E3A8A'),
+      thumbnailUrl: generateSvgThumbnail('Andalusi Astrolabe Tables', 'Ibn al-Saffar Facsimile', 'Manuscripts', '#1E3A8A', 'pdf'),
       summary: 'Arabic astronomical tables charting stellar coordinates, azimuth indicators, and lunar reckoning instruments from the Toledo and Cordoba observatories.',
-      order: 3,
+      order: 6,
       exif: {
         title: 'Andalusi Celestial Astrolabes & Meridian Tables (Facsimile Codex)',
         author: 'Scholarly Council for Medieval Arabic Paleography',
         subject: 'Historical Astronomy & Islamic Instrument Design',
-        keywords: ['Astronomy', 'Astrolabe', 'Arabic', 'Toledo', 'Manuscript', 'Meridian', 'Codex'],
+        keywords: ['PDF', 'Astronomy', 'Astrolabe', 'Arabic', 'Toledo', 'Manuscript', 'Meridian', 'Codex'],
         creator: 'National Paleography Digitization Unit',
         producer: 'Phase One Cultural Heritage Capture',
         creationDate: '2026-02-14',
-        modDate: '2026-02-15',
         pageCount: 36,
         pdfVersion: 'PDF/A-1b (Archival Certified)',
         fileSize: 5898240,
@@ -206,88 +362,106 @@ export function generateInitialItems(): PdfItem[] {
         }
       }
     },
+    // 7. PRESENTATION ITEM (.odp / .pptx)
     {
-      id: 'doc-004',
-      name: 'Harmonia Macrocosmica: Constellation Plates I-XII.pdf',
-      originalFileName: 'Cellarius_Harmonia_Macrocosmica_Plates.pdf',
-      folderId: 'folder-science',
-      tags: ['Science', 'Astronomy', 'Charts', 'Archive'],
-      uploadDate: '2026-09-30T16:10:00Z',
-      fileSize: 6710886,
+      id: 'media-007',
+      name: 'Palladian_Facade_Symmetry_Study.odp',
+      originalFileName: 'Palladian_Facade_Symmetry_Study.odp',
+      fileType: 'presentation',
+      folderId: 'folder-arch',
+      tags: ['Presentation', 'ODP', 'Architecture', 'Slides', 'Palladio'],
+      uploadDate: '2026-10-14T10:00:00Z',
+      fileSize: 14680064, // 14 MB
       allowDownload: true,
       url: '',
-      thumbnailUrl: generateSvgThumbnail('Harmonia Macrocosmica', 'Andreas Cellarius', 'Astronomy', '#14532D'),
-      summary: 'Ptolemaic, Copernican, and Tychonic world systems illustrated in hand-colored copperplate celestial engravings.',
-      order: 4,
+      thumbnailUrl: generateSvgThumbnail('Palladian Facade Symmetry Study', 'Prof. Matteo Valmarana', 'Presentation', '#78350F', 'presentation', 'odp'),
+      summary: 'OpenDocument Presentation (.odp) containing 48 high-definition architectural geometry slides, section diagrams, and speaker notes.',
+      order: 7,
       exif: {
-        title: 'Harmonia Macrocosmica: Selected Constellation Plates',
-        author: 'Andreas Cellarius (Amsterdam, 1660)',
-        subject: 'Historical Celestial Cartography & Engravings',
-        keywords: ['Cartography', 'Celestial', 'Cellarius', 'Amsterdam', 'Engravings', 'Planisphere'],
-        creator: 'Bibliotheca Universalis Archival Scan',
-        producer: 'KODAK Archive Scanner 9600',
-        creationDate: '2026-01-20',
-        modDate: '2026-01-22',
-        pageCount: 24,
-        pdfVersion: 'PDF 1.7',
-        fileSize: 6710886,
-        dimensions: '430 × 510 mm (Double Elephant Folio)',
-        colorSpace: 'DeviceRGB 16-bit',
+        title: 'Palladian Facade Symmetry & Portico Harmonics (ODP Deck)',
+        author: 'Prof. Matteo Valmarana',
+        subject: 'Architectural Analysis Lecture Slide Deck',
+        keywords: ['Presentation', 'ODP', 'Architecture', 'Slides', 'Palladio'],
+        creator: 'LibreOffice Impress 24.8 / OASIS ODF v1.3',
+        producer: 'OpenDocument Foundation Spec',
+        creationDate: '2026-10-14',
+        slideCount: 48,
+        dimensions: '16:9 Widescreen (1920 × 1080)',
+        presentationFormat: 'OpenDocument Presentation (.odp)',
+        fileSize: 14680064,
         rawExif: {
-          Cartographer: 'Andreas Cellarius',
-          OriginalPublisher: 'Johannes Janssonius',
-          CopperplateDPI: '1200 DPI Optical',
-          ColoringTechnique: 'Period Hand Watercolor Gouache'
+          Format: 'ODP / OASIS OpenDocument Presentation',
+          SlidesCount: 48,
+          AnimationSequences: 14,
+          CompatibleSoftware: 'LibreOffice Impress, Apache OpenOffice, PowerPoint 365'
         }
       }
     },
+    // 8. ANIMATED GIF / WEBP HERITAGE VISUAL
     {
-      id: 'doc-005',
-      name: 'Timber Joinery Systems in Traditional Japanese Pagodas.pdf',
-      originalFileName: 'Japanese_Pagoda_Joinery_Research.pdf',
-      folderId: 'folder-arch',
-      tags: ['Architecture', 'Monographs', 'Japan', 'Heritage'],
-      uploadDate: '2026-09-15T08:30:00Z',
-      fileSize: 2621440,
+      id: 'media-008',
+      name: 'Astrolabe_Celestial_Rotation_Sequence.gif',
+      originalFileName: 'Astrolabe_Celestial_Rotation_Sequence.gif',
+      fileType: 'image',
+      folderId: 'folder-manuscripts',
+      tags: ['Image', 'GIF', 'Manuscripts', 'Astronomy', 'Animation'],
+      uploadDate: '2026-10-10T12:00:00Z',
+      fileSize: 4194304,
       allowDownload: true,
       url: '',
-      thumbnailUrl: generateSvgThumbnail('Japanese Pagoda Joinery', 'Kenjiro Takahashi', 'Architecture', '#78350F'),
-      summary: 'Study of Kanawa Tsugi, Kigumi interlocking joints, and seismic dampening characteristics of five-story timber pagodas.',
-      order: 5,
+      thumbnailUrl: generateSvgThumbnail('Astrolabe Celestial Rotation', 'Paleography Lab', 'Animation', '#1E3A8A', 'image', 'gif'),
+      summary: 'High-contrast animated sequence demonstrating rete rotation and zodiac alignment on medieval brass astrolabes.',
+      order: 8,
       exif: {
-        title: 'Kigumi Joinery and Seismic Flexibility in Japanese Pagodas',
-        author: 'Dr. Kenjiro Takahashi (Kyoto Institute of Technology)',
-        subject: 'Structural Timber Engineering & Architectural Heritage',
-        keywords: ['Architecture', 'Japan', 'Kigumi', 'Pagoda', 'Timber', 'Earthquake', 'Joinery'],
-        creator: 'LaTeX with Microtype & TeX Live 2026',
-        producer: 'pdfTeX-1.40.24',
-        creationDate: '2026-01-10',
-        modDate: '2026-01-15',
-        pageCount: 32,
-        pdfVersion: 'PDF 1.5',
-        fileSize: 2621440,
-        dimensions: '210 × 297 mm (A4)',
-        colorSpace: 'DeviceGray',
+        title: 'Astrolabe Celestial Projection & Rete Rotation (Animated GIF)',
+        author: 'Paleography Archival Digitization Unit',
+        subject: 'Historical Scientific Instrument In Motion',
+        keywords: ['Image', 'GIF', 'Astronomy', 'Astrolabe', 'Animation', 'Heritage'],
+        creationDate: '2026-10-10',
+        fileSize: 4194304,
+        dimensions: '800 × 800 (Square)',
+        colorSpace: 'Indexed Color 256',
+        isAnimatedGif: true,
+        producer: 'FFmpeg Animated GIF Engine 7.1',
         rawExif: {
-          Language: 'ja, en',
-          Department: 'School of Architecture and Environmental Design',
-          PeerReviewed: 'True',
-          ISSN: '2381-9921'
+          Extension: 'GIF89a',
+          Frames: 60,
+          FrameRate: '15 fps',
+          Loop: 'Continuous'
         }
       }
     }
   ];
 
-  // Initialize live valid PDF blobs for each sample item so they can be viewed immediately!
+  // Initialize live valid blobs for items so they can be viewed and downloaded immediately
   items.forEach(item => {
-    const blob = createSamplePdfBlob(
-      item.exif.title || item.name,
-      item.exif.author || 'Anonymous Contributor',
-      item.tags[0] || 'Curatorial Archive',
-      item.summary || 'FolioVault verified curatorial PDF document with embedded metadata and vector typography.',
-      item.exif.pageCount || 10
-    );
-    item.url = URL.createObjectURL(blob);
+    if (item.fileType === 'pdf' && !item.url) {
+      const blob = createSamplePdfBlob(
+        item.exif.title || item.name,
+        item.exif.author || 'Anonymous Contributor',
+        item.tags[0] || 'Curatorial Archive',
+        item.summary || 'FolioVault verified curatorial PDF document with embedded metadata and vector typography.',
+        item.exif.pageCount || 10
+      );
+      item.url = URL.createObjectURL(blob);
+    } else if (item.fileType === 'word' && !item.url) {
+      const blob = createSampleWordBlob(
+        item.exif.title || item.name,
+        item.exif.author || 'Author',
+        item.wordPreviewText || item.summary || ''
+      );
+      item.url = URL.createObjectURL(blob);
+    } else if (item.fileType === 'presentation' && !item.url) {
+      const ext = item.name.endsWith('.odp') ? 'odp' : item.name.endsWith('.ppt') ? 'ppt' : 'pptx';
+      const blob = createSamplePowerpointBlob(item.exif.title || item.name, ext);
+      item.url = URL.createObjectURL(blob);
+    }
+
+    // Attach sample PowerPoint/ODP presentation blob for video items
+    if (item.fileType === 'video' && !item.powerpointUrl) {
+      const pptBlob = createSamplePowerpointBlob(item.exif.title || item.name, 'pptx');
+      item.powerpointUrl = URL.createObjectURL(pptBlob);
+    }
   });
 
   return items;
