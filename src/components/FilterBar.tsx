@@ -19,11 +19,13 @@ import {
   Presentation,
   Filter
 } from 'lucide-react';
-import { FileType, Language, PdfFolder, SortField, SortOrder } from '../types';
+import { AppVersionMode, FileType, Language, PdfFolder, SortField, SortOrder } from '../types';
 import { translations } from '../utils/translations';
 
 interface FilterBarProps {
   language: Language;
+  versionMode?: AppVersionMode;
+  onVersionModeChange?: (mode: AppVersionMode) => void;
   folders: PdfFolder[];
   selectedFolderId: string | 'all';
   onSelectFolder: (folderId: string | 'all') => void;
@@ -47,6 +49,8 @@ interface FilterBarProps {
 
 export const FilterBar: React.FC<FilterBarProps> = ({
   language,
+  versionMode = 'v2',
+  onVersionModeChange,
   folders,
   selectedFolderId,
   onSelectFolder,
@@ -145,82 +149,111 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             {t.filterByFormat}:
           </span>
 
-          <button
-            onClick={() => onSelectFormat('all')}
-            aria-pressed={selectedFormat === 'all'}
-            className={`px-2.5 py-1 rounded transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300 focus-visible:outline-none ${
-              selectedFormat === 'all'
-                ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 font-semibold shadow-xs'
-                : 'text-stone-600 dark:text-stone-400 hover:text-stone-900'
-            }`}
-          >
-            {t.formatAll} ({totalVisibleDocs})
-          </button>
+          {versionMode === 'v1' ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => onSelectFormat('all')}
+                aria-pressed={selectedFormat === 'all' || selectedFormat === 'pdf'}
+                className="px-2.5 py-1 rounded bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 font-semibold shadow-xs flex items-center gap-1.5 border border-stone-200 dark:border-stone-700 focus-visible:ring-2 focus-visible:ring-stone-600 focus-visible:outline-none cursor-pointer"
+              >
+                <FileText className="w-3 h-3 text-red-500" aria-hidden="true" />
+                <span>{t.formatPdf} ({formatItemCounts['pdf'] || 0})</span>
+              </button>
+              <span className="text-[11px] text-stone-500 hidden sm:inline">
+                {t.versionV1Desc}
+              </span>
+              {onVersionModeChange && (
+                <button
+                  type="button"
+                  onClick={() => onVersionModeChange('v2')}
+                  className="text-xs text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white underline font-medium ml-2 cursor-pointer focus-visible:ring-2 focus-visible:ring-stone-600 focus-visible:outline-none rounded"
+                  title={t.versionV2Desc}
+                >
+                  {t.versionV2Label} →
+                </button>
+              )}
+            </div>
+          ) : (
+            <>
+              <button
+                onClick={() => onSelectFormat('all')}
+                aria-pressed={selectedFormat === 'all'}
+                className={`px-2.5 py-1 rounded transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300 focus-visible:outline-none ${
+                  selectedFormat === 'all'
+                    ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 font-semibold shadow-xs'
+                    : 'text-stone-600 dark:text-stone-400 hover:text-stone-900'
+                }`}
+              >
+                {t.formatAll} ({totalVisibleDocs})
+              </button>
 
-          <button
-            onClick={() => onSelectFormat('pdf')}
-            aria-pressed={selectedFormat === 'pdf'}
-            className={`px-2.5 py-1 rounded transition-colors flex items-center gap-1 cursor-pointer focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300 focus-visible:outline-none ${
-              selectedFormat === 'pdf'
-                ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 font-semibold shadow-xs'
-                : 'text-stone-600 dark:text-stone-400 hover:text-stone-900'
-            }`}
-          >
-            <FileText className="w-3 h-3 text-red-500" aria-hidden="true" />
-            <span>{t.formatPdf} ({formatItemCounts['pdf'] || 0})</span>
-          </button>
+              <button
+                onClick={() => onSelectFormat('pdf')}
+                aria-pressed={selectedFormat === 'pdf'}
+                className={`px-2.5 py-1 rounded transition-colors flex items-center gap-1 cursor-pointer focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300 focus-visible:outline-none ${
+                  selectedFormat === 'pdf'
+                    ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 font-semibold shadow-xs'
+                    : 'text-stone-600 dark:text-stone-400 hover:text-stone-900'
+                }`}
+              >
+                <FileText className="w-3 h-3 text-red-500" aria-hidden="true" />
+                <span>{t.formatPdf} ({formatItemCounts['pdf'] || 0})</span>
+              </button>
 
-          <button
-            onClick={() => onSelectFormat('video')}
-            aria-pressed={selectedFormat === 'video'}
-            className={`px-2.5 py-1 rounded transition-colors flex items-center gap-1 cursor-pointer focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300 focus-visible:outline-none ${
-              selectedFormat === 'video'
-                ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 font-semibold shadow-xs'
-                : 'text-stone-600 dark:text-stone-400 hover:text-stone-900'
-            }`}
-          >
-            <Video className="w-3 h-3 text-amber-500" aria-hidden="true" />
-            <span>{t.formatVideo} ({formatItemCounts['video'] || 0})</span>
-          </button>
+              <button
+                onClick={() => onSelectFormat('video')}
+                aria-pressed={selectedFormat === 'video'}
+                className={`px-2.5 py-1 rounded transition-colors flex items-center gap-1 cursor-pointer focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300 focus-visible:outline-none ${
+                  selectedFormat === 'video'
+                    ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 font-semibold shadow-xs'
+                    : 'text-stone-600 dark:text-stone-400 hover:text-stone-900'
+                }`}
+              >
+                <Video className="w-3 h-3 text-amber-500" aria-hidden="true" />
+                <span>{t.formatVideo} ({formatItemCounts['video'] || 0})</span>
+              </button>
 
-          <button
-            onClick={() => onSelectFormat('presentation')}
-            aria-pressed={selectedFormat === 'presentation'}
-            className={`px-2.5 py-1 rounded transition-colors flex items-center gap-1 cursor-pointer focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300 focus-visible:outline-none ${
-              selectedFormat === 'presentation'
-                ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 font-semibold shadow-xs'
-                : 'text-stone-600 dark:text-stone-400 hover:text-stone-900'
-            }`}
-          >
-            <Presentation className="w-3 h-3 text-orange-500" aria-hidden="true" />
-            <span>{t.formatPresentation} ({formatItemCounts['presentation'] || 0})</span>
-          </button>
+              <button
+                onClick={() => onSelectFormat('presentation')}
+                aria-pressed={selectedFormat === 'presentation'}
+                className={`px-2.5 py-1 rounded transition-colors flex items-center gap-1 cursor-pointer focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300 focus-visible:outline-none ${
+                  selectedFormat === 'presentation'
+                    ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 font-semibold shadow-xs'
+                    : 'text-stone-600 dark:text-stone-400 hover:text-stone-900'
+                }`}
+              >
+                <Presentation className="w-3 h-3 text-orange-500" aria-hidden="true" />
+                <span>{t.formatPresentation} ({formatItemCounts['presentation'] || 0})</span>
+              </button>
 
-          <button
-            onClick={() => onSelectFormat('word')}
-            aria-pressed={selectedFormat === 'word'}
-            className={`px-2.5 py-1 rounded transition-colors flex items-center gap-1 cursor-pointer focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300 focus-visible:outline-none ${
-              selectedFormat === 'word'
-                ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 font-semibold shadow-xs'
-                : 'text-stone-600 dark:text-stone-400 hover:text-stone-900'
-            }`}
-          >
-            <FileSpreadsheet className="w-3 h-3 text-blue-500" aria-hidden="true" />
-            <span>{t.formatWord} ({formatItemCounts['word'] || 0})</span>
-          </button>
+              <button
+                onClick={() => onSelectFormat('word')}
+                aria-pressed={selectedFormat === 'word'}
+                className={`px-2.5 py-1 rounded transition-colors flex items-center gap-1 cursor-pointer focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300 focus-visible:outline-none ${
+                  selectedFormat === 'word'
+                    ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 font-semibold shadow-xs'
+                    : 'text-stone-600 dark:text-stone-400 hover:text-stone-900'
+                }`}
+              >
+                <FileSpreadsheet className="w-3 h-3 text-blue-500" aria-hidden="true" />
+                <span>{t.formatWord} ({formatItemCounts['word'] || 0})</span>
+              </button>
 
-          <button
-            onClick={() => onSelectFormat('image')}
-            aria-pressed={selectedFormat === 'image'}
-            className={`px-2.5 py-1 rounded transition-colors flex items-center gap-1 cursor-pointer focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300 focus-visible:outline-none ${
-              selectedFormat === 'image'
-                ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 font-semibold shadow-xs'
-                : 'text-stone-600 dark:text-stone-400 hover:text-stone-900'
-            }`}
-          >
-            <ImageIcon className="w-3 h-3 text-emerald-500" aria-hidden="true" />
-            <span>{t.formatImage} ({formatItemCounts['image'] || 0})</span>
-          </button>
+              <button
+                onClick={() => onSelectFormat('image')}
+                aria-pressed={selectedFormat === 'image'}
+                className={`px-2.5 py-1 rounded transition-colors flex items-center gap-1 cursor-pointer focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300 focus-visible:outline-none ${
+                  selectedFormat === 'image'
+                    ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 font-semibold shadow-xs'
+                    : 'text-stone-600 dark:text-stone-400 hover:text-stone-900'
+                }`}
+              >
+                <ImageIcon className="w-3 h-3 text-emerald-500" aria-hidden="true" />
+                <span>{t.formatImage} ({formatItemCounts['image'] || 0})</span>
+              </button>
+            </>
+          )}
         </div>
       </div>
 

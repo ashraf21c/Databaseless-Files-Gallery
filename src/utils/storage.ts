@@ -90,13 +90,17 @@ export function saveStoredConfig(config: AdminConfig): void {
   }
 }
 
-export function exportGalleryToYaml(folders: PdfFolder[], items: MediaItem[], config: AdminConfig): string {
+export function exportGalleryToYaml(folders: PdfFolder[], items: MediaItem[], config: AdminConfig, versionProfile: 'v1' | 'v2' = 'v2'): string {
+  const isV1 = versionProfile === 'v1';
+  const filteredItems = isV1 ? items.filter(i => i.fileType === 'pdf') : items;
+
   const exportPayload = {
-    foliovault_version: '2.1.0',
+    foliovault_version: isV1 ? '1.0.0' : '2.1.0',
+    foliovault_profile: isV1 ? 'v1_pdf_only' : 'v2_multi_format',
     exported_at: new Date().toISOString(),
     settings: {
-      version: config.version || '2.1.0',
-      galleryTitle: config.galleryTitle,
+      version: isV1 ? '1.0.0' : (config.version || '2.1.0'),
+      galleryTitle: isV1 ? `${config.galleryTitle} (v1 PDF Gallery)` : config.galleryTitle,
       gallerySubtitle: config.gallerySubtitle,
       defaultLanguage: config.defaultLanguage,
       allowGlobalDownloads: config.allowGlobalDownloads,
@@ -111,7 +115,7 @@ export function exportGalleryToYaml(folders: PdfFolder[], items: MediaItem[], co
       visibleInFrontend: f.visibleInFrontend,
       order: f.order,
     })),
-    media_items: items.map(i => ({
+    media_items: filteredItems.map(i => ({
       id: i.id,
       name: i.name,
       originalFileName: i.originalFileName,
@@ -124,9 +128,11 @@ export function exportGalleryToYaml(folders: PdfFolder[], items: MediaItem[], co
       order: i.order,
       summary: i.summary,
       exif: i.exif,
-      powerpointFileName: i.powerpointFileName,
-      powerpointFileSize: i.powerpointFileSize,
-      allowPowerpointDownload: i.allowPowerpointDownload,
+      ...(isV1 ? {} : {
+        powerpointFileName: i.powerpointFileName,
+        powerpointFileSize: i.powerpointFileSize,
+        allowPowerpointDownload: i.allowPowerpointDownload,
+      })
     }))
   };
 
@@ -150,11 +156,15 @@ export function importGalleryFromYaml(yamlContent: string): {
   };
 }
 
-export function generateSingleHtmlBundle(folders: PdfFolder[], items: MediaItem[], config: AdminConfig): string {
+export function generateSingleHtmlBundle(folders: PdfFolder[], items: MediaItem[], config: AdminConfig, versionProfile: 'v1' | 'v2' = 'v2'): string {
+  const isV1 = versionProfile === 'v1';
+  const filteredItems = isV1 ? items.filter(i => i.fileType === 'pdf') : items;
+
   const jsonCatalog = JSON.stringify({
     config,
+    versionProfile,
     folders,
-    items: items.map(i => ({
+    items: filteredItems.map(i => ({
       ...i,
       url: i.url.startsWith('blob:') ? '' : i.url,
       powerpointUrl: i.powerpointUrl?.startsWith('blob:') ? '' : i.powerpointUrl
@@ -166,7 +176,7 @@ export function generateSingleHtmlBundle(folders: PdfFolder[], items: MediaItem[
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${config.galleryTitle} (v2.1)</title>
+  <title>${config.galleryTitle} (${isV1 ? 'v1.0 PDF Gallery' : 'v2.1 Multi-Format'})</title>
   <meta name="description" content="${config.gallerySubtitle}">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

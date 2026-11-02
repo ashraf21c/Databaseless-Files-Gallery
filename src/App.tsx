@@ -6,6 +6,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   AdminConfig,
+  AppVersionMode,
   FileType,
   Language,
   MediaItem,
@@ -40,6 +41,19 @@ export default function App() {
 
   // Language state (RTL=auto: Arabic switches document direction to rtl automatically)
   const [language, setLanguage] = useState<Language>('en');
+
+  // Version Mode State: v1 (Strict PDF Gallery) vs v2 (Omni-Media Multi-Format Archive)
+  const [versionMode, setVersionMode] = useState<AppVersionMode>(() => {
+    return (localStorage.getItem('foliovault_version_mode') as AppVersionMode) || 'v2';
+  });
+
+  const handleVersionModeChange = (mode: AppVersionMode) => {
+    setVersionMode(mode);
+    localStorage.setItem('foliovault_version_mode', mode);
+    if (mode === 'v1') {
+      setSelectedFormat('all');
+    }
+  };
 
   // Core Databaseless State
   const [config, setConfig] = useState<AdminConfig>(loadStoredConfig);
@@ -163,6 +177,11 @@ export default function App() {
 
     return items
       .filter(item => {
+        // 0. Version Architecture constraint (v1 is strict PDF-only gallery)
+        if (versionMode === 'v1' && item.fileType !== 'pdf') {
+          return false;
+        }
+
         // 1. Must belong to a visible folder
         if (!visibleFolderIds.has(item.folderId)) return false;
 
@@ -230,7 +249,7 @@ export default function App() {
         }
         return sortOrder === 'asc' ? cmp : -cmp;
       });
-  }, [items, visibleFolders, selectedFolderId, selectedFormat, selectedTags, searchQuery, sortField, sortOrder]);
+  }, [items, visibleFolders, selectedFolderId, selectedFormat, selectedTags, searchQuery, sortField, sortOrder, versionMode]);
 
   // Tag filter handlers
   const handleToggleTag = (tag: string) => {
@@ -329,6 +348,8 @@ export default function App() {
       <Header
         language={language}
         onLanguageChange={setLanguage}
+        versionMode={versionMode}
+        onVersionModeChange={handleVersionModeChange}
         isAdmin={isAdmin}
         onOpenAdmin={() => setIsAdminModalOpen(true)}
         onLogoutAdmin={() => setIsAdmin(false)}
@@ -378,6 +399,8 @@ export default function App() {
         {/* Filter, Search, Format, Tag, and Sorting Controls */}
         <FilterBar
           language={language}
+          versionMode={versionMode}
+          onVersionModeChange={handleVersionModeChange}
           folders={visibleFolders}
           selectedFolderId={selectedFolderId}
           onSelectFolder={setSelectedFolderId}

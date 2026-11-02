@@ -210,6 +210,16 @@ export interface TranslationDictionary {
   resultsCountLive: string;
   closeDialog: string;
   catalogTableCaption: string;
+  versionModeLabel: string;
+  versionV1Label: string;
+  versionV2Label: string;
+  versionV1Desc: string;
+  versionV2Desc: string;
+  exportV1HtmlButton: string;
+  exportV2HtmlButton: string;
+  exportV1YamlButton: string;
+  exportV2YamlButton: string;
+  versionSwitchedNotice: string;
 }
 
 export const translations: Record<Language, TranslationDictionary> = {
@@ -418,6 +428,16 @@ export const translations: Record<Language, TranslationDictionary> = {
     resultsCountLive: 'Showing {count} items',
     closeDialog: 'Close dialog',
     catalogTableCaption: 'Media archive document and asset catalog',
+    versionModeLabel: 'Active Architecture Version',
+    versionV1Label: 'v1.0 (PDF Central Gallery)',
+    versionV2Label: 'v2.0 (Omni-Media Multi-Format)',
+    versionV1Desc: 'Strict PDF-only curatorial gallery with folder/tag albums, inline viewer, and EXIF governance.',
+    versionV2Desc: 'Full omni-media: Videos with dual PPTX downloads, Word manuscripts, Slides, Images, and RSS feed.',
+    exportV1HtmlButton: 'Export v1 Single HTML (PDF Only)',
+    exportV2HtmlButton: 'Export v2 Single HTML (Multi-Format)',
+    exportV1YamlButton: 'Export v1 YAML (PDF Only)',
+    exportV2YamlButton: 'Export v2 YAML (Multi-Format)',
+    versionSwitchedNotice: 'Switched catalog view to {version}',
   },
   ar: {
     brandTitle: 'فوليو فولت',
@@ -624,6 +644,16 @@ export const translations: Record<Language, TranslationDictionary> = {
     resultsCountLive: 'يتم عرض {count} عنصراً',
     closeDialog: 'إغلاق النافذة المنبثقة',
     catalogTableCaption: 'فهرس وسائط ومستندات الأرشيف',
+    versionModeLabel: 'إصدار المعمارية النشط',
+    versionV1Label: 'الإصدار 1.0 (معرض PDF فقط)',
+    versionV2Label: 'الإصدار 2.0 (متعدد الوسائط الشامل)',
+    versionV1Desc: 'معرض وثائق ومجلدات PDF فقط مع عارض مدمج وحوكمة بيانات EXIF بدون قواعد بيانات.',
+    versionV2Desc: 'الوسائط المتكاملة: فيديو مع رابطي تنزيل (الفيديو والبوربوينت)، مستندات وورد، عروض تقديمية، صور، وموجز RSS.',
+    exportV1HtmlButton: 'تصدير HTML مدمج للإصدار 1 (PDF فقط)',
+    exportV2HtmlButton: 'تصدير HTML مدمج للإصدار 2 (متعدد الوسائط)',
+    exportV1YamlButton: 'تصدير إعدادات YAML للإصدار 1 (PDF فقط)',
+    exportV2YamlButton: 'تصدير إعدادات YAML للإصدار 2 (متعدد الوسائط)',
+    versionSwitchedNotice: 'تم تبديل العرض إلى {version}',
   },
   ja: {
     brandTitle: 'FolioVault',
@@ -830,5 +860,15 @@ export const translations: Record<Language, TranslationDictionary> = {
     resultsCountLive: '{count}件のアイテムを表示中',
     closeDialog: 'ダイアログを閉じる',
     catalogTableCaption: 'メディアアーカイブ文書および資産カタログ',
+    versionModeLabel: '動作バージョンモード',
+    versionV1Label: 'v1.0（PDF専用中央ギャラリー）',
+    versionV2Label: 'v2.0（マルチメディア統合アーカイブ）',
+    versionV1Desc: 'PDF専用キュレーションギャラリー：アルバム・タグ分類、インライン閲覧、EXIFガバナンス。',
+    versionV2Desc: '全メディア対応：動画（動画＋PPTXデュアルDL）、Word文書、スライド、画像、およびRSS配信。',
+    exportV1HtmlButton: 'v1 単一HTMLエクスポート（PDF専用）',
+    exportV2HtmlButton: 'v2 単一HTMLエクスポート（マルチメディア）',
+    exportV1YamlButton: 'v1 YAML設定エクスポート（PDF専用）',
+    exportV2YamlButton: 'v2 YAML設定エクスポート（マルチメディア）',
+    versionSwitchedNotice: 'カタログ表示を{version}に切り替えました',
   }
 };

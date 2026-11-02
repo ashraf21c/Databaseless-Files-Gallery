@@ -609,14 +609,16 @@ export const AdminModal: React.FC<AdminModalProps> = ({
     });
   };
 
-  // YAML Export
-  const handleExportYaml = () => {
-    const yamlString = exportGalleryToYaml(folders, items, config);
+  // YAML Export (v1 PDF-only profile or v2 Multi-format profile)
+  const handleExportYaml = (profile: 'v1' | 'v2' = 'v2') => {
+    const yamlString = exportGalleryToYaml(folders, items, config, profile);
     const blob = new Blob([yamlString], { type: 'text/yaml;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `foliovault-v2-settings-${new Date().toISOString().split('T')[0]}.yaml`;
+    link.download = profile === 'v1'
+      ? `foliovault-v1-pdf-settings-${new Date().toISOString().split('T')[0]}.yaml`
+      : `foliovault-v2-multiformat-settings-${new Date().toISOString().split('T')[0]}.yaml`;
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -644,14 +646,16 @@ export const AdminModal: React.FC<AdminModalProps> = ({
     reader.readAsText(file);
   };
 
-  // Single HTML Export
-  const handleExportSingleHtml = () => {
-    const htmlBundle = generateSingleHtmlBundle(folders, items, config);
+  // Single HTML Export (v1 PDF-only standalone or v2 Multi-format standalone)
+  const handleExportSingleHtml = (profile: 'v1' | 'v2' = 'v2') => {
+    const htmlBundle = generateSingleHtmlBundle(folders, items, config, profile);
     const blob = new Blob([htmlBundle], { type: 'text/html;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `foliovault-v2-standalone-archive.html`;
+    link.download = profile === 'v1'
+      ? `foliovault-v1-pdf-standalone-archive.html`
+      : `foliovault-v2-multiformat-standalone-archive.html`;
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -1555,27 +1559,37 @@ export const AdminModal: React.FC<AdminModalProps> = ({
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="p-4 bg-stone-50 dark:bg-stone-800/40 border border-stone-200 dark:border-stone-800 rounded-lg space-y-3">
-                      <div className="text-xs font-semibold text-stone-900 dark:text-stone-100">
-                        YAML Configuration
+                      <div className="text-xs font-semibold text-stone-900 dark:text-stone-100 flex items-center justify-between">
+                        <span>YAML Configuration</span>
+                        <span className="text-[10px] text-stone-500 font-mono">v1 & v2 profiles</span>
                       </div>
                       <p className="text-[11px] text-stone-500">
-                        Export or synchronize your entire multi-format catalog into a standard flat <code>settings.yaml</code> file.
+                        Export your catalog into a flat <code>settings.yaml</code> file. Choose v1 for a strict PDF-only profile, or v2 for full multi-media.
                       </p>
 
                       <div className="flex flex-wrap items-center gap-2 pt-2">
                         <button
                           type="button"
-                          onClick={handleExportYaml}
-                          className="px-3 py-1.5 bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 text-xs font-medium rounded hover:opacity-90 transition-opacity flex items-center gap-1.5 cursor-pointer focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300 focus-visible:outline-none"
+                          onClick={() => handleExportYaml('v1')}
+                          className="px-2.5 py-1.5 bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 text-xs font-medium rounded transition-colors flex items-center gap-1.5 cursor-pointer focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300 focus-visible:outline-none border border-stone-300 dark:border-stone-700"
                         >
                           <FileDown className="w-3.5 h-3.5" aria-hidden="true" />
-                          <span>{t.exportYamlButton}</span>
+                          <span>{t.exportV1YamlButton}</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleExportYaml('v2')}
+                          className="px-2.5 py-1.5 bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 text-xs font-medium rounded hover:opacity-90 transition-opacity flex items-center gap-1.5 cursor-pointer focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300 focus-visible:outline-none"
+                        >
+                          <FileDown className="w-3.5 h-3.5" aria-hidden="true" />
+                          <span>{t.exportV2YamlButton}</span>
                         </button>
 
                         <button
                           type="button"
                           onClick={() => yamlInputRef.current?.click()}
-                          className="px-3 py-1.5 bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 text-stone-800 dark:text-stone-200 text-xs font-medium rounded hover:bg-stone-50 transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300 focus-visible:outline-none"
+                          className="px-2.5 py-1.5 bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 text-stone-800 dark:text-stone-200 text-xs font-medium rounded hover:bg-stone-50 transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300 focus-visible:outline-none"
                         >
                           {t.importYamlButton}
                         </button>
@@ -1591,21 +1605,31 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                     </div>
 
                     <div className="p-4 bg-stone-50 dark:bg-stone-800/40 border border-stone-200 dark:border-stone-800 rounded-lg space-y-3">
-                      <div className="text-xs font-semibold text-stone-900 dark:text-stone-100">
-                        {t.exportSingleHtml}
+                      <div className="text-xs font-semibold text-stone-900 dark:text-stone-100 flex items-center justify-between">
+                        <span>{t.exportSingleHtml}</span>
+                        <span className="text-[10px] text-stone-500 font-mono">Standalone bundles</span>
                       </div>
                       <p className="text-[11px] text-stone-500">
                         {t.exportSingleHtmlDesc}
                       </p>
 
-                      <div className="pt-2">
+                      <div className="flex flex-wrap items-center gap-2 pt-2">
                         <button
                           type="button"
-                          onClick={handleExportSingleHtml}
-                          className="px-3.5 py-1.5 bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 text-xs font-medium rounded hover:opacity-90 transition-opacity flex items-center gap-1.5 cursor-pointer focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300 focus-visible:outline-none"
+                          onClick={() => handleExportSingleHtml('v1')}
+                          className="px-2.5 py-1.5 bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 text-xs font-medium rounded transition-colors flex items-center gap-1.5 cursor-pointer focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300 focus-visible:outline-none border border-stone-300 dark:border-stone-700"
                         >
                           <FileDown className="w-3.5 h-3.5" aria-hidden="true" />
-                          <span>{t.generateSingleHtml}</span>
+                          <span>{t.exportV1HtmlButton}</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleExportSingleHtml('v2')}
+                          className="px-2.5 py-1.5 bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 text-xs font-medium rounded hover:opacity-90 transition-opacity flex items-center gap-1.5 cursor-pointer focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300 focus-visible:outline-none"
+                        >
+                          <FileDown className="w-3.5 h-3.5" aria-hidden="true" />
+                          <span>{t.exportV2HtmlButton}</span>
                         </button>
                       </div>
                     </div>

@@ -5,12 +5,14 @@
 
 import React from 'react';
 import { Lock, Unlock, Globe, Moon, Sun, Layers, Rss } from 'lucide-react';
-import { Language } from '../types';
+import { AppVersionMode, Language } from '../types';
 import { translations } from '../utils/translations';
 
 interface HeaderProps {
   language: Language;
   onLanguageChange: (lang: Language) => void;
+  versionMode: AppVersionMode;
+  onVersionModeChange: (mode: AppVersionMode) => void;
   isAdmin: boolean;
   onOpenAdmin: () => void;
   onLogoutAdmin: () => void;
@@ -25,6 +27,8 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({
   language,
   onLanguageChange,
+  versionMode,
+  onVersionModeChange,
   isAdmin,
   onOpenAdmin,
   onLogoutAdmin,
@@ -93,9 +97,42 @@ export const Header: React.FC<HeaderProps> = ({
           </span>
         </nav>
 
-        {/* Zone 3: Language selector + Theme + Admin portal CTA */}
+        {/* Zone 3: Version switcher + Language selector + Theme + Admin portal CTA */}
         <div className="flex items-center gap-3 shrink-0">
           
+          {/* Version Mode Switcher: v1 (PDF Gallery) vs v2 (Omni-Media Multi-Format) */}
+          <div role="group" aria-label={t.versionModeLabel} className="hidden sm:flex items-center bg-stone-100 dark:bg-stone-800 rounded-md p-1 border border-stone-200 dark:border-stone-700">
+            <Layers className="w-3.5 h-3.5 text-stone-500 mx-1.5 shrink-0" aria-hidden="true" />
+            <button
+              type="button"
+              onClick={() => onVersionModeChange('v1')}
+              aria-pressed={versionMode === 'v1'}
+              aria-label={`${t.versionV1Label} — ${t.versionV1Desc}`}
+              title={t.versionV1Desc}
+              className={`px-2 py-1 text-xs font-semibold rounded transition-colors focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300 focus-visible:outline-none cursor-pointer ${
+                versionMode === 'v1'
+                  ? 'bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 shadow-xs'
+                  : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200'
+              }`}
+            >
+              v1 (PDF)
+            </button>
+            <button
+              type="button"
+              onClick={() => onVersionModeChange('v2')}
+              aria-pressed={versionMode === 'v2'}
+              aria-label={`${t.versionV2Label} — ${t.versionV2Desc}`}
+              title={t.versionV2Desc}
+              className={`px-2 py-1 text-xs font-semibold rounded transition-colors focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300 focus-visible:outline-none cursor-pointer ${
+                versionMode === 'v2'
+                  ? 'bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 shadow-xs'
+                  : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200'
+              }`}
+            >
+              v2 (Multi)
+            </button>
+          </div>
+
           {/* Language Switcher */}
           <div role="group" aria-label={t.selectLanguage} className="flex items-center bg-stone-100 dark:bg-stone-800 rounded-md p-1 border border-stone-200 dark:border-stone-700">
             <Globe className="w-3.5 h-3.5 text-stone-500 mx-1.5 shrink-0" aria-hidden="true" />

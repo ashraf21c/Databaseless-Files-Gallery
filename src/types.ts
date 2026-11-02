@@ -5,6 +5,8 @@
 
 export type Language = 'en' | 'ar' | 'ja';
 
+export type AppVersionMode = 'v1' | 'v2';
+
 export type FileType = 'pdf' | 'video' | 'image' | 'word' | 'presentation';
 
 export type SortField = 'name' | 'size' | 'uploadDate' | 'title' | 'author' | 'pageCount' | 'creationDate' | 'fileType';
