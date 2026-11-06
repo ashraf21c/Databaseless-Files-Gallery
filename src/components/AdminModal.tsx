@@ -19,6 +19,7 @@ import {
   Eye,
   EyeOff,
   CheckCircle2,
+  Check,
   AlertCircle,
   FileText,
   Video,
@@ -46,7 +47,7 @@ import {
   generateSingleHtmlBundle,
   PHP_SCANNER_GUIDE
 } from '../utils/storage';
-import { downloadRssFeed } from '../utils/rss';
+import { downloadRssFeed, generateRssFeed } from '../utils/rss';
 import { translations } from '../utils/translations';
 
 interface AdminModalProps {
@@ -129,6 +130,19 @@ export const AdminModal: React.FC<AdminModalProps> = ({
 
   // PHP Guide copy state
   const [copiedPhp, setCopiedPhp] = useState(false);
+
+  // Export output & feedback console state
+  const [activeExport, setActiveExport] = useState<{
+    filename: string;
+    type: 'yaml' | 'html' | 'rss';
+    profile: 'v1' | 'v2';
+    content: string;
+    mimeType: string;
+    sizeKb: string;
+    timestamp: string;
+  } | null>(null);
+  const [copiedExport, setCopiedExport] = useState(false);
+  const [showExportContent, setShowExportContent] = useState(false);
 
   // Keyboard Escape listener
   React.useEffect(() => {
@@ -610,18 +624,59 @@ export const AdminModal: React.FC<AdminModalProps> = ({
     });
   };
 
+  // Universal Robust Downloader for Browser & Iframe contexts
+  const triggerFileDownload = (content: string, filename: string, mimeType: string) => {
+    try {
+      const blob = new Blob([content], { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      link.setAttribute('style', 'display: none;');
+      link.setAttribute('target', '_blank');
+      link.setAttribute('rel', 'noopener noreferrer');
+      document.body.appendChild(link);
+      link.click();
+
+      // Delay cleanup so asynchronous browser download streams complete safely
+      setTimeout(() => {
+        if (document.body.contains(link)) {
+          document.body.removeChild(link);
+        }
+        URL.revokeObjectURL(url);
+      }, 4000);
+    } catch (err) {
+      console.error('Programmatic download failed:', err);
+    }
+  };
+
   // YAML Export (v1 PDF-only profile or v2 Multi-format profile)
   const handleExportYaml = (profile: 'v1' | 'v2' = 'v2') => {
-    const yamlString = exportGalleryToYaml(folders, items, config, profile);
-    const blob = new Blob([yamlString], { type: 'text/yaml;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = profile === 'v1'
-      ? `foliovault-v1-pdf-settings-${new Date().toISOString().split('T')[0]}.yaml`
-      : `foliovault-v2-multiformat-settings-${new Date().toISOString().split('T')[0]}.yaml`;
-    link.click();
-    URL.revokeObjectURL(url);
+    try {
+      const yamlString = exportGalleryToYaml(folders, items, config, profile);
+      const dateStr = new Date().toISOString().split('T')[0];
+      const filename = profile === 'v1'
+        ? `foliovault-v1-pdf-settings-${dateStr}.yaml`
+        : `foliovault-v2-multiformat-settings-${dateStr}.yaml`;
+      const mimeType = 'text/yaml;charset=utf-8';
+
+      triggerFileDownload(yamlString, filename, mimeType);
+
+      setActiveExport({
+        filename,
+        type: 'yaml',
+        profile,
+        content: yamlString,
+        mimeType,
+        sizeKb: (new Blob([yamlString]).size / 1024).toFixed(1) + ' KB',
+        timestamp: new Date().toLocaleTimeString()
+      });
+      setShowExportContent(false);
+      setCopiedExport(false);
+    } catch (err: any) {
+      console.error('YAML export generation error:', err);
+      alert(`YAML Export Error: ${err?.message || 'Unknown error'}`);
+    }
   };
 
   // YAML Import
@@ -649,16 +704,37 @@ export const AdminModal: React.FC<AdminModalProps> = ({
 
   // Single HTML Export (v1 PDF-only standalone or v2 Multi-format standalone)
   const handleExportSingleHtml = (profile: 'v1' | 'v2' = 'v2') => {
-    const htmlBundle = generateSingleHtmlBundle(folders, items, config, profile);
-    const blob = new Blob([htmlBundle], { type: 'text/html;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = profile === 'v1'
-      ? `foliovault-v1-pdf-standalone-archive.html`
-      : `foliovault-v2-multiformat-standalone-archive.html`;
-    link.click();
-    URL.revokeObjectURL(url);
+    try {
+      const htmlBundle = generateSingleHtmlBundle(folders, items, config, profile);
+      const filename = profile === 'v1'
+        ? `foliovault-v1-pdf-standalone-archive.html`
+        : `foliovault-v2-multiformat-standalone-archive.html`;
+      const mimeType = 'text/html;charset=utf-8';
+
+      triggerFileDownload(htmlBundle, filename, mimeType);
+
+      setActiveExport({
+        filename,
+        type: 'html',
+        profile,
+        content: htmlBundle,
+        mimeType,
+        sizeKb: (new Blob([htmlBundle]).size / 1024).toFixed(1) + ' KB',
+        timestamp: new Date().toLocaleTimeString()
+      });
+      setShowExportContent(false);
+      setCopiedExport(false);
+    } catch (err: any) {
+      console.error('HTML bundle export error:', err);
+      alert(`HTML Export Error: ${err?.message || 'Unknown error'}`);
+    }
+  };
+
+  const copyExportContent = () => {
+    if (!activeExport) return;
+    navigator.clipboard.writeText(activeExport.content);
+    setCopiedExport(true);
+    setTimeout(() => setCopiedExport(false), 2000);
   };
 
   const copyPhpScript = () => {
@@ -1651,6 +1727,72 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                     </div>
                   </div>
 
+                  {/* Export Result Notification & Interactive Fallback Console */}
+                  {activeExport && (
+                    <div className="p-4 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 rounded-xl space-y-3 shadow-xs animate-in fade-in duration-200">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="flex items-center gap-2.5">
+                          <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" aria-hidden="true" />
+                          <div>
+                            <div className="text-xs font-semibold text-emerald-900 dark:text-emerald-200 flex items-center gap-2">
+                              <span>{t.exportGeneratedNotice}</span>
+                              <span className="font-mono text-[10px] bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 px-2 py-0.5 rounded font-normal">
+                                {activeExport.sizeKb} &middot; {activeExport.timestamp}
+                              </span>
+                            </div>
+                            <div className="text-[11px] font-mono text-emerald-700 dark:text-emerald-300 truncate max-w-md mt-0.5 font-medium">
+                              {activeExport.filename}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <button
+                            type="button"
+                            onClick={() => triggerFileDownload(activeExport.content, activeExport.filename, activeExport.mimeType)}
+                            className="px-3 py-1.5 text-xs font-medium bg-emerald-700 hover:bg-emerald-800 text-white rounded-md transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:outline-none"
+                          >
+                            <FileDown className="w-3.5 h-3.5" aria-hidden="true" />
+                            <span>{t.downloadAgain}</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={copyExportContent}
+                            className="px-3 py-1.5 text-xs font-medium bg-white dark:bg-stone-800 border border-emerald-300 dark:border-emerald-700 text-stone-800 dark:text-stone-200 rounded-md hover:bg-emerald-50 dark:hover:bg-stone-700 transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:outline-none"
+                          >
+                            {copiedExport ? <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                            <span>{copiedExport ? t.outputCopied : t.copyOutput}</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setShowExportContent(!showExportContent)}
+                            className="px-2.5 py-1.5 text-xs text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 transition-colors underline cursor-pointer"
+                          >
+                            {showExportContent ? t.hideOutput : t.viewOutput}
+                          </button>
+                        </div>
+                      </div>
+
+                      <p className="text-[11px] text-emerald-800/80 dark:text-emerald-300/80">
+                        {t.exportConsoleDesc}
+                      </p>
+
+                      {showExportContent && (
+                        <div className="pt-2 border-t border-emerald-200/80 dark:border-emerald-800/80 space-y-1">
+                          <div className="text-[10px] font-mono text-stone-500 flex justify-between">
+                            <span>RAW OUTPUT</span>
+                            <span>{activeExport.filename}</span>
+                          </div>
+                          <pre className="p-3 bg-stone-950 text-stone-200 rounded-lg text-[11px] font-mono max-h-56 overflow-auto border border-stone-800 whitespace-pre select-all" tabIndex={0} aria-label="Exported file raw content">
+                            {activeExport.content}
+                          </pre>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {/* Media RSS Feed & Widget Settings */}
                   <div className="p-4 bg-stone-50 dark:bg-stone-800/40 border border-stone-200 dark:border-stone-800 rounded-lg space-y-3">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -1670,7 +1812,26 @@ export const AdminModal: React.FC<AdminModalProps> = ({
 
                       <button
                         type="button"
-                        onClick={() => downloadRssFeed(items, folders, config)}
+                        onClick={() => {
+                          try {
+                            const rssContent = generateRssFeed(items, folders, config);
+                            triggerFileDownload(rssContent, 'recently_added.rss', 'application/rss+xml;charset=utf-8');
+                            setActiveExport({
+                              filename: 'recently_added.rss',
+                              type: 'rss',
+                              profile: 'v2',
+                              content: rssContent,
+                              mimeType: 'application/rss+xml;charset=utf-8',
+                              sizeKb: (new Blob([rssContent]).size / 1024).toFixed(1) + ' KB',
+                              timestamp: new Date().toLocaleTimeString()
+                            });
+                            setShowExportContent(false);
+                            setCopiedExport(false);
+                          } catch (err: any) {
+                            console.error('RSS download error:', err);
+                            downloadRssFeed(items, folders, config);
+                          }
+                        }}
                         className="px-3 py-1.5 bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 text-xs font-medium rounded hover:opacity-90 transition-opacity flex items-center gap-1.5 cursor-pointer shrink-0 focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300 focus-visible:outline-none"
                       >
                         <FileDown className="w-3.5 h-3.5" aria-hidden="true" />

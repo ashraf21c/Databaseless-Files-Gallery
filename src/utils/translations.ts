@@ -248,6 +248,13 @@ export interface TranslationDictionary {
   rssWidgetToggleDesc: string;
   resetDemoDataDesc: string;
   adminCredentialsInReadme: string;
+  exportGeneratedNotice: string;
+  downloadAgain: string;
+  copyOutput: string;
+  outputCopied: string;
+  viewOutput: string;
+  hideOutput: string;
+  exportConsoleDesc: string;
 }
 
 export const translations: Record<Language, TranslationDictionary> = {
@@ -494,6 +501,13 @@ export const translations: Record<Language, TranslationDictionary> = {
     rssWidgetToggleDesc: 'Enables the interactive carousel widget showcasing the latest 10 additions above the catalog filter bar.',
     resetDemoDataDesc: 'Restores initial sample state with videos, slide decks, Word docs, images, and folios.',
     adminCredentialsInReadme: 'Admin access is secured with cryptographic SHA-256 hashing. Consult README.md for default credentials and server configuration.',
+    exportGeneratedNotice: 'Export generated & download initiated',
+    downloadAgain: 'Download File Again',
+    copyOutput: 'Copy Code to Clipboard',
+    outputCopied: 'Copied to Clipboard!',
+    viewOutput: 'View Code',
+    hideOutput: 'Hide Code',
+    exportConsoleDesc: 'If your browser or iframe sandbox blocked the automatic download prompt, copy the raw file code below or click download again.',
   },
   ar: {
     brandTitle: 'فوليو فولت',
@@ -738,6 +752,13 @@ export const translations: Record<Language, TranslationDictionary> = {
     rssWidgetToggleDesc: 'تفعيل عنصر واجهة دائري تفاعلي يعرض آخر 10 إضافات أعلى شريط التصفية.',
     resetDemoDataDesc: 'استعادة حالة العرض التوضيحي الأولية مع مقاطع الفيديو والعروض والمستندات والصور.',
     adminCredentialsInReadme: 'تم تأمين لوحة الإدارة بتجزئة SHA-256 مشفرة. راجع ملف README.md لمعرفة بيانات الاعتماد الافتراضية وإرشادات الإعداد.',
+    exportGeneratedNotice: 'تم توليد ملف التصدير وبدء التنزيل',
+    downloadAgain: 'إعادة تنزيل الملف',
+    copyOutput: 'نسخ المحتوى إلى الحافظة',
+    outputCopied: 'تم النسخ إلى الحافظة!',
+    viewOutput: 'عرض الشيفرة',
+    hideOutput: 'إخفاء الشيفرة',
+    exportConsoleDesc: 'إذا حظر المتصفح أو إطار العرض نافذة التنزيل التلقائي، يمكنك نسخ محتوى الملف أدناه أو إعادة التنزيل.',
   },
   ja: {
     brandTitle: 'FolioVault',
@@ -982,5 +1003,12 @@ export const translations: Record<Language, TranslationDictionary> = {
     rssWidgetToggleDesc: 'フィルターバー上部に最新10件をカルーセル表示するウィジェットを有効にします。',
     resetDemoDataDesc: '動画、スライド、Word文書、画像、フォリオを含む初期デモ状態に復元します。',
     adminCredentialsInReadme: '管理者アクセスは暗号化SHA-256ハッシュで保護されています。初期パスワードと設定手順は README.md をご確認ください。',
+    exportGeneratedNotice: 'エクスポートが生成され、ダウンロードが開始されました',
+    downloadAgain: 'ファイルを再ダウンロード',
+    copyOutput: 'コードをクリップボードにコピー',
+    outputCopied: 'コピーしました！',
+    viewOutput: 'コードを表示',
+    hideOutput: 'コードを非表示',
+    exportConsoleDesc: 'ブラウザやiframeの制限でダウンロードが開始されない場合は、下のコードを直接コピーするか再ダウンロードをお試しください。',
   }
 };

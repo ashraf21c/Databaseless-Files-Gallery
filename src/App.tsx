@@ -271,9 +271,15 @@ export default function App() {
     const link = document.createElement('a');
     link.href = item.url;
     link.download = item.originalFileName || item.name;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
     document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
+    setTimeout(() => {
+      if (document.body.contains(link)) {
+        document.body.removeChild(link);
+      }
+    }, 2000);
   };
 
   // SPECIFIC REQUIREMENT: Accompanying PowerPoint slide deck download for video files
@@ -294,9 +300,15 @@ export default function App() {
     const link = document.createElement('a');
     link.href = item.powerpointUrl;
     link.download = item.powerpointFileName || `${item.name.replace(/\.[^/.]+$/, '')}_Presentation.pptx`;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
     document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
+    setTimeout(() => {
+      if (document.body.contains(link)) {
+        document.body.removeChild(link);
+      }
+    }, 2000);
   };
 
   // Open in New Tab Handler
