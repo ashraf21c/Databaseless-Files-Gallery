@@ -33,7 +33,7 @@ import {
   Rss
 } from 'lucide-react';
 import { AdminConfig, ExifDisplaySettings, FileType, Language, MediaItem, PdfFolder } from '../types';
-import { verifyPassword, hashPassword } from '../utils/crypto';
+import { verifyPassword, hashPassword, hexToBase64 } from '../utils/crypto';
 import {
   detectFileType,
   extractMultiFormatMetadata,
@@ -181,10 +181,11 @@ export const AdminModal: React.FC<AdminModalProps> = ({
     }
 
     try {
-      const newHash = await hashPassword(newPassword, config.salt);
+      const newHash = await hashPassword(newPassword);
       onUpdateConfig({
         ...config,
         passwordHash: newHash,
+        salt: '',
       });
       setPasswordSuccess(t.passwordChanged);
       setNewPassword('');
@@ -753,8 +754,10 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                 {isVerifying ? t.authVerifying : t.loginButton}
               </button>
 
-              <div className="text-center text-[11px] text-stone-400">
-                {t.defaultPasswordDemo}
+              <div className="pt-2 text-center">
+                <p className="text-xs text-stone-500 dark:text-stone-400 leading-relaxed">
+                  {t.adminCredentialsInReadme}
+                </p>
               </div>
             </form>
           </div>
@@ -866,7 +869,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                         {t.tabFolders}
                       </h4>
                       <p className="text-xs text-stone-500">
-                        Control folder visibility in frontend, download restrictions, and rearrange sequence.
+                        {t.foldersSubtitle}
                       </p>
                     </div>
 
@@ -893,7 +896,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                             required
                             value={newFolderName}
                             onChange={(e) => setNewFolderName(e.target.value)}
-                            placeholder="e.g. Video Keynotes & Symposia"
+                            placeholder={t.folderNamePlaceholder}
                             className="w-full px-3 py-1.5 text-xs bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300 focus-visible:outline-none"
                           />
                         </div>
@@ -906,7 +909,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                             type="text"
                             value={newFolderTags}
                             onChange={(e) => setNewFolderTags(e.target.value)}
-                            placeholder="Video, Keynote, Presentations"
+                            placeholder={t.folderTagsPlaceholder}
                             className="w-full px-3 py-1.5 text-xs bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300 focus-visible:outline-none"
                           />
                         </div>
@@ -921,7 +924,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                           type="text"
                           value={newFolderDesc}
                           onChange={(e) => setNewFolderDesc(e.target.value)}
-                          placeholder="Brief description for gallery users"
+                          placeholder={t.folderDescPlaceholder}
                           className="w-full px-3 py-1.5 text-xs bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded focus-visible:ring-2 focus-visible:ring-stone-600 dark:focus-visible:ring-stone-300 focus-visible:outline-none"
                         />
                       </div>
@@ -1158,7 +1161,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                       {t.uploadTitle}
                     </h4>
                     <p className="text-xs text-stone-500">
-                      Upload PDF folios, Microsoft Word (.docx), Video recordings (.mp4), and high-resolution images.
+                      {t.uploadSubtitle}
                     </p>
                   </div>
 
@@ -1205,7 +1208,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                       </div>
                       {batchStats && (
                         <div className="text-[11px] font-mono text-stone-500 bg-white dark:bg-stone-900 px-2 py-0.5 rounded border border-stone-200 dark:border-stone-700" aria-live="polite">
-                          {batchStats.totalFiles} {t.batchItemsDetected} ({batchStats.totalFolders} folders)
+                          {batchStats.totalFiles} {t.batchItemsDetected} ({batchStats.totalFolders} {t.tabFolders})
                         </div>
                       )}
                     </div>
@@ -1224,7 +1227,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                             {t.autoCreateFoldersToggle}
                           </span>
                           <span className="text-[10px] text-stone-500">
-                            Detects parent directories and automatically provisions matching albums.
+                            {t.autoCreateFoldersDesc}
                           </span>
                         </div>
                       </label>
@@ -1418,16 +1421,16 @@ export const AdminModal: React.FC<AdminModalProps> = ({
 
                   <div className="border border-stone-200 dark:border-stone-800 rounded-lg divide-y divide-stone-100 dark:divide-stone-800 bg-white dark:bg-stone-900">
                     {[
-                      { key: 'showTitle', label: t.fieldTitle, desc: 'Original title tag from document or video header' },
-                      { key: 'showAuthor', label: t.fieldAuthor, desc: 'Author, presenter, and director credits' },
-                      { key: 'showSubject', label: t.fieldSubject, desc: 'Abstract, keynote summary, or thesis topic' },
-                      { key: 'showKeywords', label: t.fieldKeywords, desc: 'Tags and index terms' },
-                      { key: 'showVideoDuration', label: t.fieldVideoDuration, desc: 'Running time for video keynote recordings' },
-                      { key: 'showWordCount', label: t.fieldWordCount, desc: 'Word and paragraph count for Word manuscripts' },
-                      { key: 'showCreationDate', label: t.fieldCreationDate, desc: 'Original creation date extracted from metadata' },
-                      { key: 'showPageCount', label: t.fieldPageCount, desc: 'Page count for PDF folios and Word monographs' },
-                      { key: 'showFileSize', label: t.fieldFileSize, desc: 'Precise byte length and megabyte representation' },
-                      { key: 'showDimensions', label: t.fieldDimensions, desc: 'Resolution for videos/images and format for folios' },
+                      { key: 'showTitle', label: t.fieldTitle, desc: t.fieldTitleDesc },
+                      { key: 'showAuthor', label: t.fieldAuthor, desc: t.fieldAuthorDesc },
+                      { key: 'showSubject', label: t.fieldSubject, desc: t.fieldSubjectDesc },
+                      { key: 'showKeywords', label: t.fieldKeywords, desc: t.fieldKeywordsDesc },
+                      { key: 'showVideoDuration', label: t.fieldVideoDuration, desc: t.fieldVideoDurationDesc },
+                      { key: 'showWordCount', label: t.fieldWordCount, desc: t.fieldWordCountDesc },
+                      { key: 'showCreationDate', label: t.fieldCreationDate, desc: t.fieldCreationDateDesc },
+                      { key: 'showPageCount', label: t.fieldPageCount, desc: t.fieldPageCountDesc },
+                      { key: 'showFileSize', label: t.fieldFileSize, desc: t.fieldFileSizeDesc },
+                      { key: 'showDimensions', label: t.fieldDimensions, desc: t.fieldDimensionsDesc },
                     ].map((row) => {
                       const isEnabled = config.exifSettings[row.key as keyof ExifDisplaySettings];
 
@@ -1480,13 +1483,26 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                     </p>
                   </div>
 
-                  <div className="p-4 bg-stone-50 dark:bg-stone-800/50 rounded-lg border border-stone-200 dark:border-stone-700 space-y-2 text-xs">
-                    <div className="font-medium text-stone-700 dark:text-stone-300">
-                      Active SHA-256 Encrypted Hash:
+                  <div className="p-4 bg-stone-50 dark:bg-stone-800/50 rounded-lg border border-stone-200 dark:border-stone-700 space-y-3 text-xs">
+                    <div className="font-medium text-stone-700 dark:text-stone-300 flex items-center justify-between">
+                      <span>{t.activeHashLabel}:</span>
+                      <span className="text-[10px] text-stone-400 font-sans">{t.matchesSha256Standard}</span>
                     </div>
-                    <code className="text-[11px] font-mono break-all block bg-white dark:bg-stone-900 p-2.5 rounded border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400">
-                      {config.passwordHash}
-                    </code>
+
+                    <div className="space-y-1.5 font-mono text-[11px]">
+                      <div>
+                        <span className="text-stone-400 text-[10px] block font-sans">{t.hashHexLabel}:</span>
+                        <code className="break-all block bg-white dark:bg-stone-900 p-2 rounded border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 select-all">
+                          {config.passwordHash}
+                        </code>
+                      </div>
+                      <div>
+                        <span className="text-stone-400 text-[10px] block font-sans">{t.hashBase64Label}:</span>
+                        <code className="break-all block bg-white dark:bg-stone-900 p-2 rounded border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 select-all">
+                          {hexToBase64(config.passwordHash) || 'N/A'}
+                        </code>
+                      </div>
+                    </div>
                   </div>
 
                   <form onSubmit={handlePasswordChange} className="max-w-md space-y-4">
@@ -1553,18 +1569,18 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                       {t.tabExport}
                     </h4>
                     <p className="text-xs text-stone-500 mt-1">
-                      Portable flat-file schemas, YAML settings management, and standalone zero-dependency exports.
+                      {t.exportSubtitle}
                     </p>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="p-4 bg-stone-50 dark:bg-stone-800/40 border border-stone-200 dark:border-stone-800 rounded-lg space-y-3">
                       <div className="text-xs font-semibold text-stone-900 dark:text-stone-100 flex items-center justify-between">
-                        <span>YAML Configuration</span>
-                        <span className="text-[10px] text-stone-500 font-mono">v1 & v2 profiles</span>
+                        <span>{t.yamlConfigTitle}</span>
+                        <span className="text-[10px] text-stone-500 font-mono">{t.v1v2ProfilesBadge}</span>
                       </div>
                       <p className="text-[11px] text-stone-500">
-                        Export your catalog into a flat <code>settings.yaml</code> file. Choose v1 for a strict PDF-only profile, or v2 for full multi-media.
+                        {t.yamlConfigDesc}
                       </p>
 
                       <div className="flex flex-wrap items-center gap-2 pt-2">
@@ -1607,7 +1623,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                     <div className="p-4 bg-stone-50 dark:bg-stone-800/40 border border-stone-200 dark:border-stone-800 rounded-lg space-y-3">
                       <div className="text-xs font-semibold text-stone-900 dark:text-stone-100 flex items-center justify-between">
                         <span>{t.exportSingleHtml}</span>
-                        <span className="text-[10px] text-stone-500 font-mono">Standalone bundles</span>
+                        <span className="text-[10px] text-stone-500 font-mono">{t.standaloneBundlesBadge}</span>
                       </div>
                       <p className="text-[11px] text-stone-500">
                         {t.exportSingleHtmlDesc}
@@ -1647,7 +1663,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                             {t.rssWidgetTitle} Feed &middot; <code className="font-mono text-[11px] text-amber-700 dark:text-amber-400">recently_added.rss</code>
                           </div>
                           <div className="text-[11px] text-stone-500">
-                            Standards-compliant RSS 2.0 with Media RSS (mrss) tags and embedded thumbnails for the latest 10 additions.
+                            {t.rssFeedDesc}
                           </div>
                         </div>
                       </div>
@@ -1676,7 +1692,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                             {t.rssWidgetToggleAdmin}
                           </span>
                           <span className="text-[11px] text-stone-500 block">
-                            Enables the interactive carousel widget showcasing the latest 10 additions above the catalog filter bar.
+                            {t.rssWidgetToggleDesc}
                           </span>
                         </div>
                       </label>
@@ -1715,7 +1731,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                         {t.resetDemoData}
                       </span>
                       <span className="text-[11px] text-stone-500">
-                        Restores initial sample state with videos, slide decks, Word docs, images, and folios.
+                        {t.resetDemoDataDesc}
                       </span>
                     </div>
 

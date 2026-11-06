@@ -74,7 +74,14 @@ export function loadStoredConfig(): AdminConfig {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_CONFIG);
     if (raw) {
-      return { ...INITIAL_ADMIN_CONFIG, ...JSON.parse(raw) };
+      const parsed = { ...INITIAL_ADMIN_CONFIG, ...JSON.parse(raw) };
+      // Migrate legacy salted hash to standard unsalted SHA-256 for admin123
+      if (parsed.passwordHash === '8b7fca13f738b55695ef2aeef33b0cfbc92bc4aa4dd38aa4d693be7bf7bfaafc') {
+        parsed.passwordHash = INITIAL_ADMIN_CONFIG.passwordHash;
+        parsed.salt = '';
+        saveStoredConfig(parsed);
+      }
+      return parsed;
     }
   } catch (e) {
     console.warn('Failed to load config from storage', e);
@@ -95,15 +102,17 @@ export function exportGalleryToYaml(folders: PdfFolder[], items: MediaItem[], co
   const filteredItems = isV1 ? items.filter(i => i.fileType === 'pdf') : items;
 
   const exportPayload = {
-    foliovault_version: isV1 ? '1.0.0' : '2.1.0',
+    foliovault_version: isV1 ? '1.0.0' : '2.0.0',
     foliovault_profile: isV1 ? 'v1_pdf_only' : 'v2_multi_format',
     exported_at: new Date().toISOString(),
     settings: {
-      version: isV1 ? '1.0.0' : (config.version || '2.1.0'),
+      version: isV1 ? '1.0.0' : (config.version || '2.0.0'),
       galleryTitle: isV1 ? `${config.galleryTitle} (v1 PDF Gallery)` : config.galleryTitle,
       gallerySubtitle: config.gallerySubtitle,
       defaultLanguage: config.defaultLanguage,
       allowGlobalDownloads: config.allowGlobalDownloads,
+      showRssWidget: config.showRssWidget !== false,
+      passwordHash: config.passwordHash,
       exifSettings: config.exifSettings,
     },
     folders: folders.map(f => ({
@@ -171,100 +180,454 @@ export function generateSingleHtmlBundle(folders: PdfFolder[], items: MediaItem[
     }))
   });
 
+  const profileTitle = isV1 ? 'v1.0 (PDF-Only Archive)' : 'v2.0 (Multi-Format Archive)';
+  const profileBadge = isV1 ? 'v1.0 PDF Folios' : 'v2.0 Multi-Format';
+
   return `<!doctype html>
-<html lang="en">
+<html lang="${config.defaultLanguage || 'en'}" dir="${config.defaultLanguage === 'ar' ? 'rtl' : 'ltr'}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${config.galleryTitle} (${isV1 ? 'v1.0 PDF Gallery' : 'v2.1 Multi-Format'})</title>
+  <title>${config.galleryTitle} - ${profileTitle}</title>
   <meta name="description" content="${config.gallerySubtitle}">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&family=Noto+Sans+JP:wght@400;500;700&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Optional additional site stylesheet import -->
-  <!-- <link rel="stylesheet" href="/site-theme.css"> -->
   <link rel="alternate" type="application/rss+xml" title="${config.galleryTitle} - Recently Added" href="recently_added.rss">
   <style>
     :root {
       --font-serif: 'Playfair Display', Georgia, serif;
-      --font-sans: 'Plus Jakarta Sans', sans-serif;
+      --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       --font-arabic: 'Cairo', sans-serif;
+      --font-jp: 'Noto Sans JP', sans-serif;
     }
     body { font-family: var(--font-sans); }
     [dir="rtl"] { font-family: var(--font-arabic); }
+    [lang="ja"] { font-family: var(--font-jp); }
+    .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   </style>
 </head>
-<body class="bg-stone-50 text-stone-900 min-h-screen">
-  <header class="border-b border-stone-200 bg-white/90 backdrop-blur sticky top-0 z-40 px-6 py-4 flex items-center justify-between">
-    <div>
-      <h1 class="text-xl font-bold tracking-tight text-stone-900 font-serif">${config.galleryTitle} <span class="text-xs font-mono font-normal text-stone-500">v2.1</span></h1>
-      <p class="text-xs text-stone-500">${config.gallerySubtitle}</p>
-    </div>
-    <div class="flex items-center gap-3">
-      <button onclick="downloadStandaloneRss()" class="text-xs bg-amber-50 text-amber-900 border border-amber-200 px-3 py-1.5 rounded font-medium hover:bg-amber-100 flex items-center gap-1.5">
-        <span>RSS Feed (recently_added.rss)</span>
-      </button>
-      <span class="text-xs bg-stone-100 text-stone-700 px-2.5 py-1.5 rounded font-mono">Multi-Format Bundle</span>
+<body class="bg-stone-50 text-stone-900 min-h-screen flex flex-col antialiased">
+
+  <!-- Header -->
+  <header class="border-b border-stone-200 bg-white/95 backdrop-blur sticky top-0 z-40 px-6 py-4">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div>
+        <div class="flex items-center gap-2.5">
+          <h1 class="text-xl font-bold tracking-tight text-stone-900 font-serif">${config.galleryTitle}</h1>
+          <span class="text-xs bg-stone-900 text-white font-mono px-2 py-0.5 rounded font-semibold">${profileBadge}</span>
+        </div>
+        <p class="text-xs text-stone-500 mt-0.5">${config.gallerySubtitle}</p>
+      </div>
+
+      <div class="flex items-center gap-2.5 flex-wrap">
+        <select id="lang-switcher" onchange="setLanguage(this.value)" class="text-xs bg-stone-100 border border-stone-200 rounded px-2.5 py-1.5 font-medium focus:outline-none">
+          <option value="en">English</option>
+          <option value="ar">العربية (RTL)</option>
+          <option value="ja">日本語</option>
+        </select>
+
+        <button onclick="downloadStandaloneRss()" class="text-xs bg-amber-50 text-amber-900 border border-amber-300 hover:bg-amber-100 px-3 py-1.5 rounded font-medium transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm">
+          <span>RSS Feed (recently_added.rss)</span>
+        </button>
+
+        <button onclick="toggleRssWidget()" id="rss-widget-btn" class="text-xs bg-stone-100 hover:bg-stone-200 border border-stone-300 text-stone-700 px-2.5 py-1.5 rounded font-medium transition-colors cursor-pointer">
+          Toggle Widget
+        </button>
+      </div>
     </div>
   </header>
-  <main class="max-w-7xl mx-auto px-6 py-8">
-    <div id="gallery-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+
+  <main class="max-w-7xl w-full mx-auto px-6 py-8 flex-1 space-y-6">
+
+    <!-- RSS 2.0 Carousel Widget (Latest 10 Additions) -->
+    <section id="rss-widget-container" class="p-4 bg-amber-50/70 border border-amber-200/90 rounded-xl space-y-3 shadow-sm ${config.showRssWidget !== false ? '' : 'hidden'}">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <div class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></div>
+          <h2 class="text-xs font-bold uppercase tracking-wider text-amber-900">Recently Added (Latest 10 Media Additions)</h2>
+        </div>
+        <span class="text-[11px] font-mono text-amber-800">Media RSS 2.0</span>
+      </div>
+
+      <div id="rss-carousel" class="flex gap-4 overflow-x-auto pb-2 scroll-smooth"></div>
+    </section>
+
+    <!-- Filters & Search Toolbar -->
+    <section class="p-4 bg-white border border-stone-200 rounded-xl shadow-sm space-y-3">
+      <div class="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+        <div class="flex-1 relative">
+          <input
+            id="search-input"
+            type="text"
+            placeholder="Search documents, transcripts, authors, topics..."
+            oninput="handleSearch(this.value)"
+            class="w-full text-xs bg-stone-50 border border-stone-300 rounded-lg px-3.5 py-2 focus:outline-none focus:ring-2 focus:ring-stone-400"
+          />
+        </div>
+
+        <div class="flex items-center gap-2 flex-wrap">
+          <select id="folder-filter" onchange="handleFolderFilter(this.value)" class="text-xs bg-stone-50 border border-stone-300 rounded-lg px-3 py-2 font-medium focus:outline-none">
+            <option value="all">All Collections</option>
+          </select>
+
+          ${!isV1 ? `
+          <div id="format-filters" class="flex items-center bg-stone-100 p-0.5 rounded-lg text-xs">
+            <button onclick="handleFormatFilter('all')" data-format="all" class="format-btn px-2.5 py-1 rounded-md font-medium bg-white text-stone-900 shadow-xs">All</button>
+            <button onclick="handleFormatFilter('pdf')" data-format="pdf" class="format-btn px-2.5 py-1 rounded-md font-medium text-stone-600">PDF</button>
+            <button onclick="handleFormatFilter('video')" data-format="video" class="format-btn px-2.5 py-1 rounded-md font-medium text-stone-600">Video</button>
+            <button onclick="handleFormatFilter('word')" data-format="word" class="format-btn px-2.5 py-1 rounded-md font-medium text-stone-600">Word</button>
+            <button onclick="handleFormatFilter('image')" data-format="image" class="format-btn px-2.5 py-1 rounded-md font-medium text-stone-600">Image</button>
+          </div>
+          ` : ''}
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between text-xs text-stone-500 pt-1 border-t border-stone-100">
+        <span id="results-count">Loading items...</span>
+        <span class="font-mono text-[11px]">${profileTitle}</span>
+      </div>
+    </section>
+
+    <!-- Gallery Grid -->
+    <section>
+      <div id="gallery-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+      <div id="empty-state" class="hidden text-center py-16 bg-white border border-dashed border-stone-300 rounded-xl">
+        <p class="text-sm font-medium text-stone-600">No media items match your search or filter.</p>
+        <button onclick="resetFilters()" class="mt-2 text-xs text-stone-900 underline font-medium cursor-pointer">Clear all filters</button>
+      </div>
+    </section>
   </main>
+
+  <!-- Modal Preview Dialog -->
+  <div id="viewer-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/75 backdrop-blur-xs">
+    <div class="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden border border-stone-200">
+      <div class="p-4 border-b border-stone-200 flex items-center justify-between bg-stone-50">
+        <div>
+          <span id="modal-type-badge" class="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-stone-900 text-white"></span>
+          <h3 id="modal-title" class="text-sm font-semibold text-stone-900 mt-1"></h3>
+        </div>
+        <button onclick="closeModal()" class="text-stone-400 hover:text-stone-700 text-xl font-bold p-1 cursor-pointer">&times;</button>
+      </div>
+
+      <div class="p-6 flex-1 overflow-y-auto space-y-4">
+        <div id="modal-media-viewport" class="bg-stone-100 rounded-lg overflow-hidden flex items-center justify-center min-h-48 border border-stone-200"></div>
+        <p id="modal-desc" class="text-xs text-stone-600 leading-relaxed"></p>
+
+        <div class="p-3.5 bg-stone-50 rounded-lg border border-stone-200 space-y-2 text-xs">
+          <h4 class="font-semibold text-stone-800">EXIF Archival Metadata</h4>
+          <div id="modal-exif-grid" class="grid grid-cols-2 gap-2 text-[11px]"></div>
+        </div>
+
+        <div id="modal-actions" class="flex items-center gap-3 pt-2"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="border-t border-stone-200 bg-white text-stone-500 py-6 text-xs mt-auto">
+    <div class="max-w-7xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-3">
+      <div>
+        <span class="font-serif font-semibold text-stone-800">${config.galleryTitle}</span>
+        <span class="mx-2">&middot;</span>
+        <span>${profileTitle}</span>
+      </div>
+      <div class="text-[11px] font-mono">
+        Databaseless Standalone Bundle &middot; Standards-Compliant RSS 2.0
+      </div>
+    </div>
+  </footer>
+
   <script>
     const CATALOG = ${jsonCatalog};
-    const container = document.getElementById('gallery-container');
-    
+    let currentFilter = 'all';
+    let currentFolder = 'all';
+    let currentSearch = '';
+    let currentLanguage = '${config.defaultLanguage || 'en'}';
+
+    // Populate Folder Filter Dropdown
+    const folderSelect = document.getElementById('folder-filter');
+    CATALOG.folders.forEach(function(f) {
+      const opt = document.createElement('option');
+      opt.value = f.id;
+      opt.textContent = f.name;
+      folderSelect.appendChild(opt);
+    });
+
+    // Populate RSS Carousel
+    function renderRssCarousel() {
+      const carousel = document.getElementById('rss-carousel');
+      carousel.innerHTML = '';
+      const latestTen = CATALOG.items.slice().sort(function(a, b) {
+        return new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime();
+      }).slice(0, 10);
+
+      latestTen.forEach(function(item) {
+        const itemCard = document.createElement('div');
+        itemCard.className = "shrink-0 w-64 bg-white border border-amber-200 rounded-lg p-3 shadow-xs hover:shadow-sm transition-shadow flex flex-col justify-between cursor-pointer";
+        itemCard.onclick = function() { openModal(item); };
+
+        const title = (item.exif && item.exif.title) ? item.exif.title : item.name;
+        const author = (item.exif && item.exif.author) ? item.exif.author : 'Archival Record';
+        const typeBadge = (item.fileType || 'pdf').toUpperCase();
+
+        itemCard.innerHTML =
+          '<div class="flex items-start gap-2.5">' +
+          '<div class="w-12 h-14 bg-stone-100 rounded overflow-hidden shrink-0 border border-stone-200 flex items-center justify-center">' +
+          (item.thumbnailUrl ? '<img src="' + item.thumbnailUrl + '" alt="" class="w-full h-full object-cover">' : '<span class="text-[10px] font-bold text-stone-400">' + typeBadge + '</span>') +
+          '</div>' +
+          '<div class="min-w-0 flex-1">' +
+          '<span class="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">' + typeBadge + '</span>' +
+          '<h3 class="text-xs font-semibold text-stone-900 truncate mt-1">' + title + '</h3>' +
+          '<p class="text-[10px] text-stone-500 truncate">' + author + '</p>' +
+          '</div>' +
+          '</div>' +
+          '<div class="mt-2.5 pt-2 border-t border-amber-100 flex items-center justify-between text-[10px] text-stone-500">' +
+          '<span>' + (item.fileSize / 1024 / 1024).toFixed(1) + ' MB</span>' +
+          '<span class="text-amber-700 font-medium">Inspect &rarr;</span>' +
+          '</div>';
+
+        carousel.appendChild(itemCard);
+      });
+    }
+
+    // Toggle RSS Widget
+    function toggleRssWidget() {
+      const container = document.getElementById('rss-widget-container');
+      container.classList.toggle('hidden');
+    }
+
+    // Filter Handlers
+    function handleSearch(val) {
+      currentSearch = (val || '').toLowerCase().trim();
+      renderGallery();
+    }
+
+    function handleFolderFilter(val) {
+      currentFolder = val;
+      renderGallery();
+    }
+
+    function handleFormatFilter(val) {
+      currentFilter = val;
+      document.querySelectorAll('.format-btn').forEach(function(b) {
+        if (b.getAttribute('data-format') === val) {
+          b.className = "format-btn px-2.5 py-1 rounded-md font-medium bg-white text-stone-900 shadow-xs";
+        } else {
+          b.className = "format-btn px-2.5 py-1 rounded-md font-medium text-stone-600";
+        }
+      });
+      renderGallery();
+    }
+
+    function resetFilters() {
+      currentSearch = '';
+      currentFolder = 'all';
+      currentFilter = 'all';
+      document.getElementById('search-input').value = '';
+      document.getElementById('folder-filter').value = 'all';
+      if (document.querySelectorAll('.format-btn').length > 0) {
+        handleFormatFilter('all');
+      } else {
+        renderGallery();
+      }
+    }
+
+    // Render Gallery
+    function renderGallery() {
+      const container = document.getElementById('gallery-container');
+      const emptyState = document.getElementById('empty-state');
+      container.innerHTML = '';
+
+      const filtered = CATALOG.items.filter(function(item) {
+        if (currentFolder !== 'all' && item.folderId !== currentFolder) return false;
+        if (currentFilter !== 'all' && (item.fileType || 'pdf') !== currentFilter) return false;
+        if (currentSearch) {
+          const matchTitle = ((item.exif && item.exif.title) || item.name || '').toLowerCase().includes(currentSearch);
+          const matchAuthor = ((item.exif && item.exif.author) || '').toLowerCase().includes(currentSearch);
+          const matchDesc = (item.summary || '').toLowerCase().includes(currentSearch);
+          const matchTags = (item.tags || []).some(function(t) { return t.toLowerCase().includes(currentSearch); });
+          if (!matchTitle && !matchAuthor && !matchDesc && !matchTags) return false;
+        }
+        return true;
+      });
+
+      document.getElementById('results-count').textContent = filtered.length + ' item(s) available';
+
+      if (filtered.length === 0) {
+        emptyState.classList.remove('hidden');
+        return;
+      }
+      emptyState.classList.add('hidden');
+
+      filtered.forEach(function(doc) {
+        const folder = CATALOG.folders.find(function(f) { return f.id === doc.folderId; });
+        const isVideo = doc.fileType === 'video';
+        const card = document.createElement('article');
+        card.className = "bg-white border border-stone-200 rounded-xl overflow-hidden shadow-xs hover:shadow-md transition-shadow flex flex-col justify-between";
+
+        let dualPptHtml = '';
+        if (isVideo && doc.powerpointFileName) {
+          dualPptHtml = '<div class="mt-2.5 p-2 bg-amber-50 rounded border border-amber-200 text-[11px] text-amber-900 flex items-center justify-between">' +
+            '<span class="truncate">Companion Slide Deck: <strong>' + doc.powerpointFileName + '</strong></span>' +
+            '<a href="' + (doc.powerpointUrl || '#') + '" download class="shrink-0 px-2 py-0.5 bg-amber-600 text-white rounded text-[10px] font-semibold hover:bg-amber-700">Get PPTX</a>' +
+            '</div>';
+        }
+
+        const title = (doc.exif && doc.exif.title) ? doc.exif.title : doc.name;
+        const author = (doc.exif && doc.exif.author) ? doc.exif.author : 'Archival Record';
+        const typeLabel = (doc.fileType || 'pdf').toUpperCase();
+
+        card.innerHTML =
+          '<div class="h-44 bg-stone-100 flex items-center justify-center p-3 border-b border-stone-100 relative group cursor-pointer" onclick="openModalById(\\'' + doc.id + '\\')">' +
+          (doc.thumbnailUrl
+            ? '<img src="' + doc.thumbnailUrl + '" alt="' + doc.name + '" class="max-h-full max-w-full object-contain drop-shadow-xs">'
+            : '<div class="text-stone-400 font-bold text-xl tracking-wider">' + typeLabel + '</div>') +
+          '<span class="absolute top-2 end-2 bg-stone-900/90 text-white text-[10px] uppercase font-bold px-2 py-0.5 rounded backdrop-blur-xs">' + typeLabel + '</span>' +
+          '</div>' +
+          '<div class="p-5 flex-1 flex flex-col justify-between">' +
+          '<div>' +
+          '<div class="text-[11px] text-stone-500 font-medium mb-1">' + (folder ? folder.name : 'Central Archive') + '</div>' +
+          '<h3 class="text-sm font-bold text-stone-900 leading-snug hover:text-stone-600 cursor-pointer mb-2" onclick="openModalById(\\'' + doc.id + '\\')">' + title + '</h3>' +
+          '<p class="text-xs text-stone-600 line-clamp-2 mb-2">' + (doc.summary || '') + '</p>' +
+          dualPptHtml +
+          '</div>' +
+          '<div class="mt-4 pt-3 border-t border-stone-100 flex items-center justify-between text-xs">' +
+          '<div class="text-[11px] text-stone-500 font-mono">' + (doc.fileSize / 1024 / 1024).toFixed(1) + ' MB</div>' +
+          '<div class="flex items-center gap-2">' +
+          '<button onclick="openModalById(\\'' + doc.id + '\\')" class="px-2.5 py-1 text-[11px] bg-stone-100 hover:bg-stone-200 text-stone-800 rounded font-medium cursor-pointer transition-colors">Inspect</button>' +
+          (doc.url ? '<a href="' + doc.url + '" download class="px-2.5 py-1 text-[11px] bg-stone-900 hover:bg-stone-800 text-white rounded font-medium transition-colors">Download</a>' : '') +
+          '</div>' +
+          '</div>' +
+          '</div>';
+
+        container.appendChild(card);
+      });
+    }
+
+    function openModalById(id) {
+      const item = CATALOG.items.find(function(i) { return i.id === id; });
+      if (item) openModal(item);
+    }
+
+    // Modal Operations
+    function openModal(item) {
+      document.getElementById('modal-type-badge').textContent = (item.fileType || 'pdf').toUpperCase();
+      document.getElementById('modal-title').textContent = (item.exif && item.exif.title) ? item.exif.title : item.name;
+      document.getElementById('modal-desc').textContent = item.summary || 'No description provided for this archival record.';
+
+      const viewport = document.getElementById('modal-media-viewport');
+      viewport.innerHTML = '';
+      if (item.fileType === 'video' && item.url) {
+        viewport.innerHTML = '<video controls class="w-full max-h-72 rounded bg-black"><source src="' + item.url + '" type="video/mp4">Your browser does not support video playback.</video>';
+      } else if (item.thumbnailUrl) {
+        viewport.innerHTML = '<img src="' + item.thumbnailUrl + '" alt="" class="max-h-72 object-contain p-2">';
+      } else {
+        viewport.innerHTML = '<div class="p-8 text-center text-stone-400 font-medium">Archival Document Record (' + (item.fileType || 'pdf').toUpperCase() + ')</div>';
+      }
+
+      const exifGrid = document.getElementById('modal-exif-grid');
+      exifGrid.innerHTML = '';
+      const exif = item.exif || {};
+      const fields = [
+        ['Author / Presenter', exif.author || 'Archival Record'],
+        ['Subject / Topic', exif.subject || 'Scholarly Collection'],
+        ['Keywords', (exif.keywords || []).join(', ') || 'N/A'],
+        ['File Size', (item.fileSize / 1024 / 1024).toFixed(2) + ' MB'],
+        ['Format', (item.fileType || 'pdf').toUpperCase()],
+        ['Creation Date', exif.creationDate || item.uploadDate]
+      ];
+      if (exif.videoDuration) fields.push(['Duration', exif.videoDuration]);
+      if (exif.pageCount) fields.push(['Page Count', exif.pageCount + ' pages']);
+
+      fields.forEach(function(pair) {
+        const row = document.createElement('div');
+        row.innerHTML = '<span class="text-stone-400 block">' + pair[0] + ':</span><span class="font-medium text-stone-800">' + pair[1] + '</span>';
+        exifGrid.appendChild(row);
+      });
+
+      const actions = document.getElementById('modal-actions');
+      actions.innerHTML = '';
+      if (item.url) {
+        actions.innerHTML += '<a href="' + item.url + '" download class="px-4 py-2 bg-stone-900 text-white rounded text-xs font-semibold hover:bg-stone-800 transition-colors">Download ' + (item.fileType || 'file').toUpperCase() + '</a>';
+      }
+      if (item.fileType === 'video' && item.powerpointFileName && item.powerpointUrl) {
+        actions.innerHTML += '<a href="' + item.powerpointUrl + '" download class="px-4 py-2 bg-amber-600 text-white rounded text-xs font-semibold hover:bg-amber-700 transition-colors">Download Companion Slide Deck (.pptx)</a>';
+      }
+
+      document.getElementById('viewer-modal').classList.remove('hidden');
+    }
+
+    function closeModal() {
+      document.getElementById('viewer-modal').classList.add('hidden');
+    }
+
+    // Language switcher
+    function setLanguage(lang) {
+      currentLanguage = lang;
+      document.documentElement.lang = lang;
+      document.documentElement.dir = (lang === 'ar') ? 'rtl' : 'ltr';
+    }
+
+    // RSS Feed Generator
     function downloadStandaloneRss() {
       const latest = CATALOG.items.slice().sort(function(a, b) {
         return new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime();
       }).slice(0, 10);
-      
+
       let itemsXml = '';
       latest.forEach(function(item) {
         const title = (item.exif && item.exif.title) ? item.exif.title : item.name;
+        const author = (item.exif && item.exif.author) ? item.exif.author : 'Archival Record';
         const thumb = item.thumbnailUrl ? '<media:thumbnail url="' + item.thumbnailUrl + '" />' : '';
-        itemsXml += '<item><title>' + title + '</title><link>' + (item.url || '#') + '</link><pubDate>' + new Date(item.uploadDate).toUTCString() + '</pubDate><enclosure url="' + (item.url || '#') + '" length="' + item.fileSize + '" type="application/octet-stream" /><media:content url="' + (item.url || '#') + '" fileSize="' + item.fileSize + '" medium="' + (item.fileType === 'video' ? 'video' : 'document') + '" />' + thumb + '</item>';
+        const companion = (item.fileType === 'video' && item.powerpointFileName)
+          ? '<media:peer url="' + (item.powerpointUrl || '') + '" type="application/vnd.ms-powerpoint" role="companion" title="' + item.powerpointFileName + '" />'
+          : '';
+
+        itemsXml += '<item>' +
+          '<title>' + escapeXml(title) + '</title>' +
+          '<link>' + escapeXml(item.url || '#') + '</link>' +
+          '<pubDate>' + new Date(item.uploadDate).toUTCString() + '</pubDate>' +
+          '<dc:creator>' + escapeXml(author) + '</dc:creator>' +
+          '<enclosure url="' + escapeXml(item.url || '#') + '" length="' + item.fileSize + '" type="application/octet-stream" />' +
+          '<media:content url="' + escapeXml(item.url || '#') + '" fileSize="' + item.fileSize + '" medium="' + (item.fileType === 'video' ? 'video' : 'document') + '" />' +
+          thumb + companion +
+          '</item>';
       });
-      
-      const rss = '<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>' + ${JSON.stringify(config.galleryTitle)} + ' - Recently Added</title><description>' + ${JSON.stringify(config.gallerySubtitle)} + '</description><atom:link href="recently_added.rss" rel="self" type="application/rss+xml" />' + itemsXml + '</channel></rss>';
-      
+
+      const rss = '<?xml version="1.0" encoding="UTF-8"?>' +
+        '<rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:dc="http://purl.org/dc/elements/1.1/">' +
+        '<channel>' +
+        '<title>' + escapeXml(CATALOG.config.galleryTitle) + ' - Recently Added</title>' +
+        '<description>' + escapeXml(CATALOG.config.gallerySubtitle) + '</description>' +
+        '<atom:link href="recently_added.rss" rel="self" type="application/rss+xml" />' +
+        itemsXml +
+        '</channel></rss>';
+
       const blob = new Blob([rss], { type: 'application/rss+xml;charset=utf-8' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
       a.download = 'recently_added.rss';
       a.click();
+      URL.revokeObjectURL(a.href);
     }
 
-    CATALOG.items.forEach(function(doc) {
-      const folder = CATALOG.folders.find(function(f) { return f.id === doc.folderId; });
-      const isVideo = doc.fileType === 'video';
-      const card = document.createElement('article');
-      card.className = "bg-white border border-stone-200 rounded-lg overflow-hidden shadow-sm hover:shadow transition-shadow flex flex-col";
-      
-      let extraActions = '';
-      if (isVideo && doc.powerpointFileName) {
-        extraActions = '<div class="mt-2 text-[11px] text-stone-500">Includes original slide deck: <strong>' + doc.powerpointFileName + '</strong></div>';
-      }
+    function escapeXml(unsafe) {
+      return (unsafe || '').replace(/[<>&'"]/g, function(c) {
+        switch (c) {
+          case '<': return '&lt;';
+          case '>': return '&gt;';
+          case '&': return '&amp;';
+          case '\'': return '&apos;';
+          case '"': return '&quot;';
+        }
+      });
+    }
 
-      card.innerHTML = '<div class="h-48 bg-stone-100 flex items-center justify-center p-4 border-b border-stone-100 relative">' +
-        '<img src="' + (doc.thumbnailUrl || '') + '" alt="' + doc.name + '" class="max-h-full max-w-full object-contain shadow-sm" onerror="this.style.display=\\'none\\'">' +
-        '<span class="absolute top-2 end-2 bg-stone-900 text-white text-[10px] uppercase font-semibold px-2 py-0.5 rounded">' + doc.fileType.toUpperCase() + '</span>' +
-        '</div>' +
-        '<div class="p-5 flex-1 flex flex-col justify-between">' +
-        '<div>' +
-        '<div class="text-xs text-stone-500 mb-1 font-medium">' + (folder ? folder.name : 'Archive') + '</div>' +
-        '<h2 class="text-base font-semibold text-stone-900 mb-2 leading-snug">' + ((doc.exif && doc.exif.title) ? doc.exif.title : doc.name) + '</h2>' +
-        '<p class="text-xs text-stone-600 line-clamp-2 mb-3">' + (doc.summary || '') + '</p>' +
-        extraActions +
-        '</div>' +
-        '<div class="mt-4 pt-3 border-t border-stone-100 flex items-center justify-between text-xs">' +
-        '<span class="text-stone-500 font-mono">' + (doc.fileSize / 1024 / 1024).toFixed(1) + ' MB</span>' +
-        '<span class="text-stone-700 font-medium">' + ((doc.exif && doc.exif.author) ? doc.exif.author : 'Archival Record') + '</span>' +
-        '</div>' +
-        '</div>';
-      container.appendChild(card);
-    });
+    // Initialize Standalone Bundle
+    renderRssCarousel();
+    renderGallery();
   </script>
 </body>
 </html>`;

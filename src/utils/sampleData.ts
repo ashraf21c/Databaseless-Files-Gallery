@@ -29,11 +29,13 @@ export const INITIAL_EXIF_SETTINGS: ExifDisplaySettings = {
   showWordCount: true,
 };
 
-// Default hashed password for "admin123" with salt "foliovault_salt_2026":
+// Default standard SHA-256 hash for "admin123" (matches feutex.com, CyberChef, sha256sum):
+// Hex: 240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9
+// Base64: JAvlGPq9JyTdtvBO6x2llnRI1+gxwIyPqCKAn3THIKk=
 export const INITIAL_ADMIN_CONFIG: AdminConfig = {
   version: '2.0.0',
-  passwordHash: '8b7fca13f738b55695ef2aeef33b0cfbc92bc4aa4dd38aa4d693be7bf7bfaafc',
-  salt: 'foliovault_salt_2026',
+  passwordHash: '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9',
+  salt: '',
   galleryTitle: 'FolioVault Central Repository',
   gallerySubtitle: 'Databaseless central repository for verified scholarly, institutional, and multimedia folios.',
   defaultLanguage: 'en',

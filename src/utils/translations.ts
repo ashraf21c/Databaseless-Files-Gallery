@@ -220,6 +220,34 @@ export interface TranslationDictionary {
   exportV1YamlButton: string;
   exportV2YamlButton: string;
   versionSwitchedNotice: string;
+  foldersSubtitle: string;
+  folderNamePlaceholder: string;
+  folderTagsPlaceholder: string;
+  folderDescPlaceholder: string;
+  uploadSubtitle: string;
+  autoCreateFoldersDesc: string;
+  fieldTitleDesc: string;
+  fieldAuthorDesc: string;
+  fieldSubjectDesc: string;
+  fieldKeywordsDesc: string;
+  fieldVideoDurationDesc: string;
+  fieldWordCountDesc: string;
+  fieldCreationDateDesc: string;
+  fieldPageCountDesc: string;
+  fieldFileSizeDesc: string;
+  fieldDimensionsDesc: string;
+  matchesSha256Standard: string;
+  hashHexLabel: string;
+  hashBase64Label: string;
+  exportSubtitle: string;
+  yamlConfigTitle: string;
+  v1v2ProfilesBadge: string;
+  yamlConfigDesc: string;
+  standaloneBundlesBadge: string;
+  rssFeedDesc: string;
+  rssWidgetToggleDesc: string;
+  resetDemoDataDesc: string;
+  adminCredentialsInReadme: string;
 }
 
 export const translations: Record<Language, TranslationDictionary> = {
@@ -438,6 +466,34 @@ export const translations: Record<Language, TranslationDictionary> = {
     exportV1YamlButton: 'Export v1 YAML (PDF Only)',
     exportV2YamlButton: 'Export v2 YAML (Multi-Format)',
     versionSwitchedNotice: 'Switched catalog view to {version}',
+    foldersSubtitle: 'Control folder visibility in frontend, download restrictions, and rearrange sequence.',
+    folderNamePlaceholder: 'e.g. Video Keynotes & Symposia',
+    folderTagsPlaceholder: 'Video, Keynote, Presentations',
+    folderDescPlaceholder: 'Brief description for gallery users',
+    uploadSubtitle: 'Upload PDF folios, Microsoft Word (.docx), Video recordings (.mp4), and high-resolution images.',
+    autoCreateFoldersDesc: 'Detects parent directories and automatically provisions matching albums.',
+    fieldTitleDesc: 'Original title tag from document or video header',
+    fieldAuthorDesc: 'Author, presenter, and director credits',
+    fieldSubjectDesc: 'Abstract, keynote summary, or thesis topic',
+    fieldKeywordsDesc: 'Tags and index terms',
+    fieldVideoDurationDesc: 'Running time for video keynote recordings',
+    fieldWordCountDesc: 'Word and paragraph count for Word manuscripts',
+    fieldCreationDateDesc: 'Original creation date extracted from metadata',
+    fieldPageCountDesc: 'Page count for PDF folios and Word monographs',
+    fieldFileSizeDesc: 'Precise byte length and megabyte representation',
+    fieldDimensionsDesc: 'Resolution for videos/images and format for folios',
+    matchesSha256Standard: 'Matches feutex.com / sha256sum standard generators',
+    hashHexLabel: 'Hexadecimal (64 chars):',
+    hashBase64Label: 'Base64 (44 chars):',
+    exportSubtitle: 'Portable flat-file schemas, YAML settings management, and standalone zero-dependency exports.',
+    yamlConfigTitle: 'YAML Configuration',
+    v1v2ProfilesBadge: 'v1 & v2 profiles',
+    yamlConfigDesc: 'Export your catalog into a flat settings.yaml file. Choose v1 for a strict PDF-only profile, or v2 for full multi-media.',
+    standaloneBundlesBadge: 'Standalone bundles',
+    rssFeedDesc: 'Standards-compliant RSS 2.0 with Media RSS (mrss) tags and embedded thumbnails for the latest 10 additions.',
+    rssWidgetToggleDesc: 'Enables the interactive carousel widget showcasing the latest 10 additions above the catalog filter bar.',
+    resetDemoDataDesc: 'Restores initial sample state with videos, slide decks, Word docs, images, and folios.',
+    adminCredentialsInReadme: 'Admin access is secured with cryptographic SHA-256 hashing. Consult README.md for default credentials and server configuration.',
   },
   ar: {
     brandTitle: 'فوليو فولت',
@@ -654,6 +710,34 @@ export const translations: Record<Language, TranslationDictionary> = {
     exportV1YamlButton: 'تصدير إعدادات YAML للإصدار 1 (PDF فقط)',
     exportV2YamlButton: 'تصدير إعدادات YAML للإصدار 2 (متعدد الوسائط)',
     versionSwitchedNotice: 'تم تبديل العرض إلى {version}',
+    foldersSubtitle: 'التحكم في ظهور المجلدات في الواجهة الأمامية، وقيود التنزيل، وإعادة ترتيب تسلسل الألبومات.',
+    folderNamePlaceholder: 'مثال: المحاضرات المرئية والندوات',
+    folderTagsPlaceholder: 'فيديو، محاضرة، عروض تقديمية',
+    folderDescPlaceholder: 'وصف موجز للمجموعة لمستخدمي المعرض',
+    uploadSubtitle: 'رفع ملفات PDF والمستندات (.docx) والتسجيلات المرئية (.mp4) والصور عالية الدقة.',
+    autoCreateFoldersDesc: 'يكتشف المجلدات الرئيسية وينشئ تلقائياً ألبومات مطابقة لها.',
+    fieldTitleDesc: 'وسم العنوان الأصلي من ترويسة المستند أو الفيديو',
+    fieldAuthorDesc: 'المؤلف والمحاضر والمخرج وصناع العمل',
+    fieldSubjectDesc: 'الملخص التنفيذي أو الفكرة الرئيسية',
+    fieldKeywordsDesc: 'الوسوم ومصطلحات الفهرس',
+    fieldVideoDurationDesc: 'مدة التشغيل لتسجيلات الفيديو والمحاضرات',
+    fieldWordCountDesc: 'عدد الكلمات والفقرات لمستندات وورد',
+    fieldCreationDateDesc: 'تاريخ الإنشاء الأصلي المستخرج من البيانات الوصفية',
+    fieldPageCountDesc: 'عدد الصفحات لوثائق PDF ومجلدات وورد',
+    fieldFileSizeDesc: 'طول البايت الدقيق والحجم بالميغابايت',
+    fieldDimensionsDesc: 'أبعاد الدقة للفيديو والصور وتنسيق الورق',
+    matchesSha256Standard: 'متوافق مع feutex.com ومولدات SHA-256 القياسية',
+    hashHexLabel: 'ست عشري (Hex - 64 حرفاً):',
+    hashBase64Label: 'تشفير Base64 (44 حرفاً):',
+    exportSubtitle: 'مخططات ملفات مسطحة محمولة، وإدارة إعدادات YAML، وحزم مستقلة بدون تبعيات.',
+    yamlConfigTitle: 'تكوين YAML',
+    v1v2ProfilesBadge: 'ملفات تعريف الإصدارين 1 و 2',
+    yamlConfigDesc: 'تصدير الكتالوج إلى ملف settings.yaml مسطح. اختر v1 لـ PDF فقط أو v2 لكافة الوسائط.',
+    standaloneBundlesBadge: 'حزم HTML المستقلة',
+    rssFeedDesc: 'موجز RSS 2.0 قياسي مع وسوم Media RSS وصور مصغرة مدمجة لآخر 10 إضافات.',
+    rssWidgetToggleDesc: 'تفعيل عنصر واجهة دائري تفاعلي يعرض آخر 10 إضافات أعلى شريط التصفية.',
+    resetDemoDataDesc: 'استعادة حالة العرض التوضيحي الأولية مع مقاطع الفيديو والعروض والمستندات والصور.',
+    adminCredentialsInReadme: 'تم تأمين لوحة الإدارة بتجزئة SHA-256 مشفرة. راجع ملف README.md لمعرفة بيانات الاعتماد الافتراضية وإرشادات الإعداد.',
   },
   ja: {
     brandTitle: 'FolioVault',
@@ -870,5 +954,33 @@ export const translations: Record<Language, TranslationDictionary> = {
     exportV1YamlButton: 'v1 YAML設定エクスポート（PDF専用）',
     exportV2YamlButton: 'v2 YAML設定エクスポート（マルチメディア）',
     versionSwitchedNotice: 'カタログ表示を{version}に切り替えました',
+    foldersSubtitle: 'フロントエンドでの表示／非表示、ダウンロード制限、表示順序の並べ替えを管理します。',
+    folderNamePlaceholder: '例：基調講演ビデオとシンポジウム',
+    folderTagsPlaceholder: '動画, 講演, スライド資料',
+    folderDescPlaceholder: 'ギャラリー利用者向けのコレクションの概要',
+    uploadSubtitle: 'PDFフォリオ、Microsoft Word（.docx）、動画（.mp4）、高解像度画像をアップロードします。',
+    autoCreateFoldersDesc: '親ディレクトリを検出し、一致するアルバムを自動プロビジョニングします。',
+    fieldTitleDesc: '文書または動画ヘッダーの元のタイトルタグ',
+    fieldAuthorDesc: '著者、講演者、制作者のクレジット',
+    fieldSubjectDesc: '要約、アブストラクト、主要テーマ',
+    fieldKeywordsDesc: 'タグおよび索引キーワード',
+    fieldVideoDurationDesc: '動画講演および記録の再生時間',
+    fieldWordCountDesc: 'Word原稿の総単語数および段落数',
+    fieldCreationDateDesc: 'メタデータから抽出された本来の作成日時',
+    fieldPageCountDesc: 'PDFフォリオおよびWord文書のページ数',
+    fieldFileSizeDesc: '正確なバイト長およびメガバイト表示',
+    fieldDimensionsDesc: '動画・画像の解像度およびフォリオの寸法',
+    matchesSha256Standard: 'feutex.com や標準SHA-256生成ツールと完全互換',
+    hashHexLabel: '16進数（Hex - 64文字）:',
+    hashBase64Label: 'Base64形式（44文字）:',
+    exportSubtitle: 'ポータブルなフラットファイル、YAML設定管理、依存関係ゼロの単一ファイル出力。',
+    yamlConfigTitle: 'YAML設定管理',
+    v1v2ProfilesBadge: 'v1 & v2 プロファイル',
+    yamlConfigDesc: 'カタログ全体をフラットな settings.yaml に出力します。v1（PDF専用）またはv2（全メディア）を選択可能。',
+    standaloneBundlesBadge: 'スタンドアロンHTMLバンドル',
+    rssFeedDesc: '最新10件の追加アイテム（メディアおよびサムネイル付き）に対応したRSS 2.0＋Media RSS仕様。',
+    rssWidgetToggleDesc: 'フィルターバー上部に最新10件をカルーセル表示するウィジェットを有効にします。',
+    resetDemoDataDesc: '動画、スライド、Word文書、画像、フォリオを含む初期デモ状態に復元します。',
+    adminCredentialsInReadme: '管理者アクセスは暗号化SHA-256ハッシュで保護されています。初期パスワードと設定手順は README.md をご確認ください。',
   }
 };
